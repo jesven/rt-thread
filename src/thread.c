@@ -474,13 +474,6 @@ rt_err_t rt_thread_yield(void)
     if ((thread->stat & RT_THREAD_STAT_MASK) == RT_THREAD_READY &&
         thread->tlist.next != thread->tlist.prev)
     {
-        /* remove thread from thread list */
-        rt_list_remove(&(thread->tlist));
-
-        /* put thread to end of ready queue */
-        rt_list_insert_before(&(rt_thread_priority_table[thread->current_priority]),
-                              &(thread->tlist));
-
         /* enable interrupt */
         rt_hw_interrupt_enable(level);
 
