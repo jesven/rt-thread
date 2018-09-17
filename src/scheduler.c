@@ -206,6 +206,10 @@ void rt_schedule(void)
 
         if (rt_thread_ready_priority_group != 0)
         {
+            if ((rt_current_thread->stat & RT_THREAD_STAT_MASK) == RT_THREAD_READY)
+            {
+                rt_schedule_insert_thread(rt_current_thread);
+            }
 
 #if RT_THREAD_PRIORITY_MAX <= 32
             highest_ready_priority = __rt_ffs(rt_thread_ready_priority_group) - 1;
@@ -221,17 +225,12 @@ void rt_schedule(void)
                     struct rt_thread,
                     tlist);
 
-            if (((rt_current_thread->stat & RT_THREAD_STAT_MASK) != RT_THREAD_READY)
-                    || (rt_current_priority >= highest_ready_priority))
+            if (to_thread != rt_current_thread)
             {
                 /* if the destination thread is not the same as current thread */
                 rt_current_priority = (rt_uint8_t)highest_ready_priority;
                 from_thread         = rt_current_thread;
                 rt_current_thread   = to_thread;
-
-                if ((from_thread->stat & RT_THREAD_STAT_MASK) == RT_THREAD_READY) {
-                    rt_schedule_insert_thread(from_thread);
-                }
 
                 RT_OBJECT_HOOK_CALL(rt_scheduler_hook, (from_thread, to_thread));
 
@@ -277,6 +276,7 @@ void rt_schedule(void)
             }
             else
             {
+                rt_schedule_remove_thread(rt_current_thread);
                 /* enable interrupt */
                 rt_hw_interrupt_enable(level);
             }
