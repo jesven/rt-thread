@@ -152,6 +152,7 @@ vector_irq:
 
     bl      rt_interrupt_enter
     bl      rt_hw_trap_irq
+    bl      rt_hw_interrupt_disable_int
     bl      rt_interrupt_leave
 
     @ if rt_thread_switch_interrupt_flag set, jump to
@@ -161,6 +162,7 @@ vector_irq:
     cmp     r1, #1
     beq     rt_hw_context_switch_interrupt_do
 
+    bl      rt_hw_interrupt_enable_int
     ldmfd   sp!, {r0-r12,lr}
     subs    pc,  lr, #4
 
@@ -196,7 +198,7 @@ rt_hw_context_switch_interrupt_do:
     push    {r0-r12,lr}
     ldr     r0, =rt_thread_switch_interrupt_to_thread
     ldr     r0, [r0]
-    bl      rt_check_lock
+    bl      rt_post_switch_int
     pop     {r0-r12,lr}
 
     ldmfd   sp!, {r4}       @ pop new task's cpsr to spsr

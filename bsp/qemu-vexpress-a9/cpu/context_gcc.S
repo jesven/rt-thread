@@ -78,7 +78,7 @@ rt_hw_context_switch:
 
     push    {r0-r12,lr}
     mov     r0, r2
-    bl      rt_check_lock
+    bl      rt_post_switch
     pop     {r0-r12,lr}
 
     ldmfd sp!, {r4}         @ pop new task cpsr to spsr

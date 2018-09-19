@@ -197,6 +197,7 @@ void rt_schedule(void)
     level = rt_hw_interrupt_disable();
 
     /* check the scheduler is enabled or not */
+
     if (rt_current_thread->scheduler_lock_nest == 1 && rt_interrupt_nest == 0)
     {
         register rt_ubase_t highest_ready_priority;
@@ -231,8 +232,6 @@ void rt_schedule(void)
                 RT_OBJECT_HOOK_CALL(rt_scheduler_hook, (from_thread, to_thread));
 
                 rt_schedule_remove_thread(to_thread);
-
-                rt_current_thread   = to_thread;
 
                 /* switch to new thread */
                 RT_DEBUG_LOG(RT_DEBUG_SCHEDULER,
@@ -318,8 +317,6 @@ void rt_interrupt_check_schedule(void)
 
                 RT_OBJECT_HOOK_CALL(rt_scheduler_hook, (from_thread, to_thread));
                 rt_schedule_remove_thread(to_thread);
-
-                rt_current_thread   = to_thread;
 
 #ifdef RT_USING_OVERFLOW_CHECK
                 _rt_scheduler_stack_check(to_thread);
@@ -440,7 +437,7 @@ void rt_enter_critical(void)
     register rt_base_t level;
 
     /* disable interrupt */
-    level = rt_hw_interrupt_disable();
+    level = rt_disable_local_irq();
 
     /*
      * the maximal number of nest is RT_UINT16_MAX, which is big
@@ -450,7 +447,7 @@ void rt_enter_critical(void)
     rt_current_thread->scheduler_lock_nest ++;
 
     /* enable interrupt */
-    rt_hw_interrupt_enable(level);
+    rt_enable_local_irq(level);
 }
 RTM_EXPORT(rt_enter_critical);
 
@@ -462,7 +459,7 @@ void rt_exit_critical(void)
     register rt_base_t level;
 
     /* disable interrupt */
-    level = rt_hw_interrupt_disable();
+    level = rt_disable_local_irq();
 
     rt_current_thread->scheduler_lock_nest --;
 
@@ -470,14 +467,14 @@ void rt_exit_critical(void)
     {
         rt_current_thread->scheduler_lock_nest = 0;
         /* enable interrupt */
-        rt_hw_interrupt_enable(level);
+        rt_enable_local_irq(level);
 
         rt_schedule();
     }
     else
     {
         /* enable interrupt */
-        rt_hw_interrupt_enable(level);
+        rt_enable_local_irq(level);
     }
 }
 RTM_EXPORT(rt_exit_critical);
@@ -495,11 +492,24 @@ RTM_EXPORT(rt_critical_level);
 /**@}*/
 
 extern void spin_unlock(void);
-void rt_check_lock(struct rt_thread *thread)
+void rt_post_switch(struct rt_thread *thread)
 {
+    rt_current_thread = thread;
     if (!thread->kernel_lock_nest)
     {
         spin_unlock();
     }
 }
-RTM_EXPORT(rt_check_lock);
+RTM_EXPORT(rt_post_switch);
+
+void rt_post_switch_int(struct rt_thread *thread)
+{
+    rt_current_thread->kernel_lock_nest--;
+    rt_current_thread->scheduler_lock_nest--;
+    rt_current_thread = thread;
+    if (!thread->kernel_lock_nest)
+    {
+        spin_unlock();
+    }
+}
+RTM_EXPORT(rt_post_switch_int);
