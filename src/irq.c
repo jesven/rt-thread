@@ -92,6 +92,8 @@ RTM_EXPORT(rt_interrupt_enter);
  *
  * @see rt_interrupt_enter
  */
+extern struct rt_thread *rt_current_thread;
+extern void rt_interrupt_check_schedule(void);
 void rt_interrupt_leave(void)
 {
     rt_base_t level;
@@ -102,6 +104,10 @@ void rt_interrupt_leave(void)
     level = rt_hw_interrupt_disable();
     rt_interrupt_nest --;
     RT_OBJECT_HOOK_CALL(rt_interrupt_leave_hook,());
+
+    /* shjic add for smp*/
+    rt_interrupt_check_schedule();
+    /* shjic add for smp end*/
     rt_hw_interrupt_enable(level);
 }
 RTM_EXPORT(rt_interrupt_leave);

@@ -529,6 +529,9 @@ struct rt_thread
 
     rt_uint8_t  stat;                                   /**< thread status */
 
+    rt_uint16_t  scheduler_lock_nest;                    /**< scheduler lock count */
+    rt_uint16_t  kernel_lock_nest;                       /**< kernel lock count */
+
     /* priority */
     rt_uint8_t  current_priority;                       /**< current priority */
     rt_uint8_t  init_priority;                          /**< initialized priority */

@@ -173,6 +173,10 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
     thread->error = RT_EOK;
     thread->stat  = RT_THREAD_INIT;
 
+    /* lock init */
+    thread->scheduler_lock_nest = 0;
+    thread->kernel_lock_nest = 0;
+
     /* initialize cleanup function and user data */
     thread->cleanup   = 0;
     thread->user_data = 0;
@@ -795,7 +799,6 @@ rt_thread_t rt_thread_find(char *name)
             return (rt_thread_t)object;
         }
     }
-
     /* leave critical */
     if (rt_thread_self() != RT_NULL)
         rt_exit_critical();

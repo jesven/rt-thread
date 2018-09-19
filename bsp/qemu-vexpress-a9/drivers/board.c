@@ -87,5 +87,6 @@ void rt_hw_board_init(void)
     rt_console_set_device(RT_CONSOLE_DEVICE_NAME);
 
     rt_thread_idle_sethook(idle_wfi);
+    rt_kprintf("HEAP_BEGIN, %p\n", HEAP_BEGIN);
 }
 
