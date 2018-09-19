@@ -197,7 +197,7 @@ void rt_schedule(void)
     level = rt_hw_interrupt_disable();
 
     /* check the scheduler is enabled or not */
-    if (rt_current_thread->scheduler_lock_nest == 0 && rt_interrupt_nest == 0)
+    if (rt_current_thread->scheduler_lock_nest == 1 && rt_interrupt_nest == 0)
     {
         register rt_ubase_t highest_ready_priority;
 
@@ -227,11 +227,12 @@ void rt_schedule(void)
                 /* if the destination thread is not the same as current thread */
                 rt_current_priority = (rt_uint8_t)highest_ready_priority;
                 from_thread         = rt_current_thread;
-                rt_current_thread   = to_thread;
 
                 RT_OBJECT_HOOK_CALL(rt_scheduler_hook, (from_thread, to_thread));
 
                 rt_schedule_remove_thread(to_thread);
+
+                rt_current_thread   = to_thread;
 
                 /* switch to new thread */
                 RT_DEBUG_LOG(RT_DEBUG_SCHEDULER,
@@ -250,7 +251,7 @@ void rt_schedule(void)
                     extern void rt_thread_handle_sig(rt_bool_t clean_state);
 
                     rt_hw_context_switch((rt_uint32_t)&from_thread->sp,
-                            (rt_uint32_t)&to_thread->sp);
+                            (rt_uint32_t)&to_thread->sp, to_thread);
 
                     /* enable interrupt */
                     rt_hw_interrupt_enable(level);
@@ -286,7 +287,7 @@ void rt_interrupt_check_schedule(void)
     struct rt_thread *to_thread;
     struct rt_thread *from_thread;
 
-    if (rt_current_thread->scheduler_lock_nest == 0 && rt_interrupt_nest == 0)
+    if (rt_current_thread->scheduler_lock_nest == 1 && rt_interrupt_nest == 0)
     {
         register rt_ubase_t highest_ready_priority;
 
@@ -314,18 +315,19 @@ void rt_interrupt_check_schedule(void)
                 /* if the destination thread is not the same as current thread */
                 rt_current_priority = (rt_uint8_t)highest_ready_priority;
                 from_thread         = rt_current_thread;
-                rt_current_thread   = to_thread;
 
                 RT_OBJECT_HOOK_CALL(rt_scheduler_hook, (from_thread, to_thread));
-
                 rt_schedule_remove_thread(to_thread);
+
+                rt_current_thread   = to_thread;
+
 #ifdef RT_USING_OVERFLOW_CHECK
                 _rt_scheduler_stack_check(to_thread);
 #endif
                 RT_DEBUG_LOG(RT_DEBUG_SCHEDULER, ("switch in interrupt\n"));
 
                 rt_hw_context_switch_interrupt((rt_uint32_t)&from_thread->sp,
-                        (rt_uint32_t)&to_thread->sp);
+                        (rt_uint32_t)&to_thread->sp, to_thread);
             }
             else
             {
@@ -492,3 +494,12 @@ rt_uint16_t rt_critical_level(void)
 RTM_EXPORT(rt_critical_level);
 /**@}*/
 
+extern void spin_unlock(void);
+void rt_check_lock(struct rt_thread *thread)
+{
+    if (!thread->kernel_lock_nest)
+    {
+        spin_unlock();
+    }
+}
+RTM_EXPORT(rt_check_lock);

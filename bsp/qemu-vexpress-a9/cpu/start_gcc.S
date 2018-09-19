@@ -193,6 +193,12 @@ rt_hw_context_switch_interrupt_do:
     ldr     r6,  [r6]
     ldr     sp,  [r6]       @ get new task's stack pointer
 
+    push    {r0-r12,lr}
+    ldr     r0, =rt_thread_switch_interrupt_to_thread
+    ldr     r0, [r0]
+    bl      rt_check_lock
+    pop     {r0-r12,lr}
+
     ldmfd   sp!, {r4}       @ pop new task's cpsr to spsr
     msr     spsr_cxsf, r4
 

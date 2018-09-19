@@ -109,12 +109,15 @@ rt_isr_handler_t rt_hw_interrupt_install(int              vector,
 rt_base_t rt_hw_interrupt_disable(void);
 void rt_hw_interrupt_enable(rt_base_t level);
 
+rt_base_t rt_disable_local_irq();
+void rt_enable_local_irq(rt_base_t level);
+
 /*
  * Context interfaces
  */
-void rt_hw_context_switch(rt_uint32_t from, rt_uint32_t to);
+void rt_hw_context_switch(rt_uint32_t from, rt_uint32_t to, struct rt_thread *to_thread);
 void rt_hw_context_switch_to(rt_uint32_t to);
-void rt_hw_context_switch_interrupt(rt_uint32_t from, rt_uint32_t to);
+void rt_hw_context_switch_interrupt(rt_uint32_t from, rt_uint32_t to, struct rt_thread *to_thread);
 
 void rt_hw_console_output(const char *str);
 
