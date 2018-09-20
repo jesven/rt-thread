@@ -90,3 +90,140 @@ void rt_hw_board_init(void)
     rt_kprintf("HEAP_BEGIN, %p\n", HEAP_BEGIN);
 }
 
+extern void set_secondy_cpu_boot_address(void);
+extern void dist_ipi_send(int irq, int cpu);
+
+void secondy_cpu_up(void)
+{
+    set_secondy_cpu_boot_address();
+    __asm__ volatile ("dsb":::"memory");
+    dist_ipi_send(0, 1);
+}
+
+#include "spinlock.h"
+#include "gic.h"
+#include "stdint.h"
+
+//#define __REG32(x)                      (*(volatile unsigned int *)(x))
+
+#define REALVIEW_SCTL_BASE              0x10001000  /* System Controller */
+#define REALVIEW_REFCLK                 0
+#define TIMER01_HW_BASE                 0x10011000
+#define TIMER23_HW_BASE                 0x10012000
+
+#define TIMER_LOAD(hw_base)             __REG32(hw_base + 0x00)
+#define TIMER_VALUE(hw_base)            __REG32(hw_base + 0x04)
+#define TIMER_CTRL(hw_base)             __REG32(hw_base + 0x08)
+#define TIMER_CTRL_ONESHOT              (1 << 0)
+#define TIMER_CTRL_32BIT                (1 << 1)
+#define TIMER_CTRL_DIV1                 (0 << 2)
+#define TIMER_CTRL_DIV16                (1 << 2)
+#define TIMER_CTRL_DIV256               (2 << 2)
+#define TIMER_CTRL_IE                   (1 << 5)        /* Interrupt Enable (versatile only) */
+#define TIMER_CTRL_PERIODIC             (1 << 6)
+#define TIMER_CTRL_ENABLE               (1 << 7)
+
+#define TIMER_INTCLR(hw_base)           __REG32(hw_base + 0x0c)
+#define TIMER_RIS(hw_base)              __REG32(hw_base + 0x10)
+#define TIMER_MIS(hw_base)              __REG32(hw_base + 0x14)
+#define TIMER_BGLOAD(hw_base)           __REG32(hw_base + 0x18)
+
+#define SYS_CTRL                        __REG32(REALVIEW_SCTL_BASE)
+
+//#define IRQ_PBA8_TIMER2_3               35
+
+void timer_init(int timer, unsigned int preload) {
+    uint32_t val;
+
+    if (timer == 0) {
+        /* Setup Timer0 for generating irq */
+        val = TIMER_CTRL(TIMER01_HW_BASE);
+        val &= ~TIMER_CTRL_ENABLE;
+        val |= (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_IE);
+        TIMER_CTRL(TIMER01_HW_BASE) = val;
+
+        TIMER_LOAD(TIMER01_HW_BASE) = preload;
+
+        /* enable timer */
+        TIMER_CTRL(TIMER01_HW_BASE) |= TIMER_CTRL_ENABLE;
+    } else {
+        /* Setup Timer1 for generating irq */
+        val = TIMER_CTRL(TIMER23_HW_BASE);
+        val &= ~TIMER_CTRL_ENABLE;
+        val |= (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_IE);
+        TIMER_CTRL(TIMER23_HW_BASE) = val;
+
+        TIMER_LOAD(TIMER23_HW_BASE) = preload;
+
+        /* enable timer */
+        TIMER_CTRL(TIMER23_HW_BASE) |= TIMER_CTRL_ENABLE;
+    }
+}
+
+void timer_clear_pending(int timer) {
+    if (timer == 0) {
+        TIMER_INTCLR(TIMER01_HW_BASE) = 0x01;
+    } else {
+        TIMER_INTCLR(TIMER23_HW_BASE) = 0x01;
+    }
+}
+
+void second_cpu_c_start(void)
+{
+//  rt_hw_vector_init();
+
+    arm_gic_cpu_init(0, REALVIEW_GIC_CPU_BASE);
+
+    __raw_spin_lock(&rt_kernel_lock);
+
+    arm_gic_set_cpu(0, IRQ_PBA8_TIMER0_1, 0x2); //指定到cpu1
+    timer_init(0, 2000000);
+    rt_hw_interrupt_umask(IRQ_PBA8_TIMER0_1);
+
+    asm volatile ("cpsie i":::"memory","cc");
+
+    __raw_spin_unlock(&rt_kernel_lock);
+    rt_kprintf("cpu1 init\n");
+	while (1)
+    {
+//        rt_kprintf(".");
+        asm volatile ("wfe");
+        __raw_spin_lock(&rt_kernel_lock);
+        __raw_spin_unlock(&rt_kernel_lock);
+	}
+}
+
+int cnt1 = 0;
+
+#define GIC_ACK_INTID_MASK              0x000003ff
+void secondy_irq_handler(void)
+{
+    int ir;
+    int fullir;
+    unsigned int cpu_id;
+
+    __asm__ volatile (
+            "mrc p15, 0, %0, c0, c0, 5"
+            :"=r"(cpu_id)
+            );
+    cpu_id &= 0xf;
+
+    fullir = arm_gic_get_active_irq(0);
+    ir = fullir & GIC_ACK_INTID_MASK;
+
+    if (ir == 1023) {
+        /* Spurious interrupt */
+        return;
+    }
+    if (ir < 16) {
+        rt_kprintf("IPI %d on cpu %d\n", ir, cpu_id);
+    } else if (ir == IRQ_PBA8_TIMER0_1) {
+        timer_clear_pending(0);
+        rt_kprintf("[cpu%d timer cnt %d]\n", cpu_id, ++cnt1);
+    } else {
+        rt_kprintf("unkown IRQ no %d 0x%08x\n", ir, cpu_id);
+    }
+
+    /* end of interrupt */
+    arm_gic_ack(0, fullir);
+}

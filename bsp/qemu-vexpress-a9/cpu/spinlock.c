@@ -1,13 +1,18 @@
 #include "rtthread.h"
 #include "rthw.h"
+#include "spinlock.h"
 
 extern struct rt_thread *rt_current_thread;
 
 int kernel_lock = 0;
+
+raw_spinlock_t rt_kernel_lock;
+
 void spin_lock(void)
 {
     if (kernel_lock == 0)
     {
+        __raw_spin_lock(&rt_kernel_lock);
         kernel_lock = 1;
     }
     else
@@ -22,6 +27,7 @@ void spin_unlock(void)
     if (kernel_lock)
     {
         kernel_lock = 0;
+        __raw_spin_unlock(&rt_kernel_lock);
     }
 }
 

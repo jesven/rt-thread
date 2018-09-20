@@ -225,6 +225,8 @@ void rt_application_init(void)
     rt_thread_startup(tid);
 }
 
+void secondy_cpu_up(void);
+
 int rtthread_startup(void)
 {
     rt_hw_interrupt_disable();
@@ -257,6 +259,7 @@ int rtthread_startup(void)
     /* idle thread initialization */
     rt_thread_idle_init();
 
+    secondy_cpu_up();
     /* start scheduler */
     rt_system_scheduler_start();
 

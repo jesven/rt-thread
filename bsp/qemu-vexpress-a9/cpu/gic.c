@@ -278,3 +278,11 @@ void arm_gic_set_group(rt_uint32_t index, int vector, int group)
                         vector) |=  (1 << (vector % 32));
     }
 }
+
+void dist_ipi_send(int irq, int cpu)
+{
+    if (irq >= 16 || cpu >= 8) {
+        return;
+    }
+    GIC_DIST_SOFTINT(_gic_table[0].dist_hw_base) = ((1 << cpu) << 16) | irq;
+}

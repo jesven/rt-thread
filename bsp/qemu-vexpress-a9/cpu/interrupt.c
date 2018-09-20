@@ -34,7 +34,7 @@ const unsigned int VECTOR_BASE = 0x00;
 extern void rt_cpu_vector_set_base(unsigned int addr);
 extern int system_vectors;
 
-static void rt_hw_vector_init(void)
+void rt_hw_vector_init(void)
 {
     rt_cpu_vector_set_base((unsigned int)&system_vectors);
 }
