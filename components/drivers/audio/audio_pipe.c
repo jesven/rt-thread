@@ -89,9 +89,10 @@ static rt_size_t rt_pipe_read(rt_device_t dev,
             /* waiting on suspended read list */
             rt_list_insert_before(&(pipe->suspended_read_list),
                                   &(thread->tlist));
-            rt_hw_interrupt_enable(level);
 
             rt_schedule();
+
+            rt_hw_interrupt_enable(level);
         }
         else
         {
@@ -175,9 +176,10 @@ static rt_size_t rt_pipe_write(rt_device_t dev,
             /* waiting on suspended read list */
             rt_list_insert_before(&(pipe->suspended_write_list),
                                   &(thread->tlist));
-            rt_hw_interrupt_enable(level);
 
             rt_schedule();
+
+            rt_hw_interrupt_enable(level);
         }
         else
         {

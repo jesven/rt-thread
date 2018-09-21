@@ -82,10 +82,11 @@ void rt_wqueue_wakeup(rt_wqueue_t *queue, void *key)
             }
         }
     }
-    rt_hw_interrupt_enable(level);
 
     if (need_schedule)
         rt_schedule();
+
+    rt_hw_interrupt_enable(level);
 }
 
 int rt_wqueue_wait(rt_wqueue_t *queue, int condition, int msec)
@@ -128,9 +129,10 @@ int rt_wqueue_wait(rt_wqueue_t *queue, int condition, int msec)
 
         rt_timer_start(tmr);
     }
-    rt_hw_interrupt_enable(level);
 
     rt_schedule();
+
+    rt_hw_interrupt_enable(level);
 
     level = rt_hw_interrupt_disable();
 

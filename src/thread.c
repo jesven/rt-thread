@@ -635,6 +635,21 @@ rt_err_t rt_thread_control(rt_thread_t thread, int cmd, void *arg)
         return rt_thread_delete(thread);
 #endif
 
+    case RT_THREAD_CTRL_BIND_CPU:
+    {
+        rt_uint8_t cpu;
+
+        if ((thread->stat & RT_THREAD_STAT_MASK) != RT_THREAD_INIT)
+        {
+            return RT_ERROR;
+        }
+        cpu = (rt_uint8_t)(size_t)arg;
+        if (cpu > RT_CPUS_NR) {
+            cpu = RT_CPUS_NR;
+        }
+        thread->bind_cpu = cpu;
+        break;
+    }
     default:
         break;
     }

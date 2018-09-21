@@ -184,11 +184,11 @@ rt_err_t rt_prio_queue_push(struct rt_prio_queue *que,
                                tlist);
         /* resume it */
         rt_thread_resume(thread);
-        rt_hw_interrupt_enable(level);
 
         /* perform a schedule */
         rt_schedule();
 
+        rt_hw_interrupt_enable(level);
         return RT_EOK;
     }
 
@@ -236,9 +236,10 @@ rt_err_t rt_prio_queue_pop(struct rt_prio_queue *que,
             rt_timer_start(&(thread->thread_timer));
         }
 
+        rt_schedule();
+
         rt_hw_interrupt_enable(level);
 
-        rt_schedule();
 
         /* thread is waked up */
         if (thread->error != RT_EOK)

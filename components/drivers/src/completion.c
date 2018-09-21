@@ -86,11 +86,11 @@ rt_err_t rt_completion_wait(struct rt_completion *completion,
                                  &timeout);
                 rt_timer_start(&(thread->thread_timer));
             }
-            /* enable interrupt */
-            rt_hw_interrupt_enable(level);
-
             /* do schedule */
             rt_schedule();
+
+            /* enable interrupt */
+            rt_hw_interrupt_enable(level);
 
             /* thread is waked up */
             result = thread->error;
@@ -131,10 +131,11 @@ void rt_completion_done(struct rt_completion *completion)
 
         /* resume it */
         rt_thread_resume(thread);
-        rt_hw_interrupt_enable(level);
 
         /* perform a schedule */
         rt_schedule();
+
+        rt_hw_interrupt_enable(level);
     }
     else
     {
