@@ -336,10 +336,8 @@ void rt_data_queue_reset(struct rt_data_queue *queue)
         /* enable interrupt */
         rt_hw_interrupt_enable(temp);
     }
-
-    rt_schedule();
-
     rt_exit_critical();
 
+    rt_schedule();
 }
 RTM_EXPORT(rt_data_queue_reset);

@@ -2,7 +2,7 @@
 #include "rthw.h"
 #include "spinlock.h"
 
-raw_spinlock_t rt_kernel_lock;
+raw_spinlock_t rt_kernel_lock = {.slock = 0};
 
 rt_base_t rt_hw_interrupt_disable(void)
 {

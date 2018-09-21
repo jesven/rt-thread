@@ -537,6 +537,9 @@ void rt_schedule_remove_thread(struct rt_thread *thread)
 /**
  * This function will lock the thread scheduler.
  */
+
+raw_spinlock_t rt_scheduler_lock = {.slock = 0};
+
 void rt_enter_critical(void)
 {
     register rt_base_t level;
@@ -549,6 +552,10 @@ void rt_enter_critical(void)
      * enough and does not check here
      */
 
+    if (rt_current_thread->scheduler_lock_nest == rt_current_thread->kernel_lock_nest)
+    {
+        __raw_spin_lock(&rt_scheduler_lock);
+    }
     rt_current_thread->scheduler_lock_nest ++;
 
     /* enable interrupt */
@@ -567,6 +574,11 @@ void rt_exit_critical(void)
     level = rt_disable_local_irq();
 
     rt_current_thread->scheduler_lock_nest --;
+
+    if (rt_current_thread->scheduler_lock_nest == rt_current_thread->kernel_lock_nest)
+    {
+        __raw_spin_unlock(&rt_scheduler_lock);
+    }
 
     if (rt_current_thread->scheduler_lock_nest <= 0)
     {
