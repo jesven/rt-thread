@@ -13,6 +13,9 @@ typedef struct {
 
 extern raw_spinlock_t rt_kernel_lock;
 
+#define spin_lock() __raw_spin_lock(&rt_kernel_lock);
+#define spin_unlock() __raw_spin_unlock(&rt_kernel_lock);
+
 static inline void __raw_spin_lock(raw_spinlock_t *lock)
 {
     unsigned long tmp;

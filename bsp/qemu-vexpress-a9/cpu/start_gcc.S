@@ -371,9 +371,6 @@ secondy_cpu_start:
     bic r0, #(1<<13)
     mcr p15, 0, r0, c1, c0, 0
 
-    ldr r0, =arm_vector_table
-    mcr p15, 0, r0, c12, c0, 0
-
     cps #Mode_IRQ
     ldr sp, =irq_stack_2_limit
 
@@ -383,33 +380,7 @@ secondy_cpu_start:
     cps #Mode_SVC
     ldr sp, =svc_stack_2_limit
 
-//  bl cpu_iface_init
-
     b second_cpu_c_start
-
-.align 5          //align to 2~5=32
-arm_vector_table:
-    ldr pc, =arm_reset_exception
-    ldr pc, =arm_undefined_inst_exception
-    ldr pc, =arm_swi_syscall
-    ldr pc, =arm_prefetch_abort_exception
-    ldr pc, =arm_data_abort_exception
-    ldr pc, =arm_reset_exception
-    ldr pc, =arm_irq_exception
-    ldr pc, =arm_fiq_exception
-arm_reset_exception:
-arm_undefined_inst_exception:
-arm_swi_syscall:
-arm_prefetch_abort_exception:
-arm_data_abort_exception:
-    b .
-arm_irq_exception:
-arm_fiq_exception:
-    clrex
-    push {r0-r12, lr}
-    bl secondy_irq_handler
-    pop {r0-r12, lr}
-    subs pc, lr, #4
 
 .bss
 .align 2   //align to  2~2=4

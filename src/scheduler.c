@@ -39,6 +39,7 @@
 
 #include <rtthread.h>
 #include <rthw.h>
+#include "spinlock.h"
 
 rt_list_t rt_global_thread_priority_table[RT_THREAD_PRIORITY_MAX];
 rt_list_t rt_percpu_thread_priority_table[RT_CPUS_NR][RT_THREAD_PRIORITY_MAX];
@@ -595,10 +596,11 @@ rt_uint16_t rt_critical_level(void)
 RTM_EXPORT(rt_critical_level);
 /**@}*/
 
-extern void spin_unlock(void);
 void rt_post_switch(struct rt_thread *thread)
 {
+#if 0
     rt_kprintf("%d S %s -> %s\n", rt_cpuid(), rt_current_thread->name, thread->name);
+#endif
     rt_current_thread = thread;
     if (!thread->kernel_lock_nest)
     {
@@ -609,7 +611,9 @@ RTM_EXPORT(rt_post_switch);
 
 void rt_post_switch_int(struct rt_thread *thread)
 {
+#if 0
     rt_kprintf("%d I %s -> %s\n", rt_cpuid(), rt_current_thread->name, thread->name);
+#endif
     rt_current_thread->kernel_lock_nest--;
     rt_current_thread->scheduler_lock_nest--;
     rt_current_thread = thread;

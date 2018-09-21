@@ -131,8 +131,6 @@ void secondy_cpu_up(void)
 
 #define SYS_CTRL                        __REG32(REALVIEW_SCTL_BASE)
 
-//#define IRQ_PBA8_TIMER2_3               35
-
 void timer_init(int timer, unsigned int preload) {
     uint32_t val;
 
@@ -176,8 +174,6 @@ static void rt_hw_timer2_isr(int vector, void *param)
     timer_clear_pending(0);
 }
 
-void spin_lock(void);
-#if 1
 void second_cpu_c_start(void)
 {
     rt_hw_vector_init();
@@ -192,65 +188,4 @@ void second_cpu_c_start(void)
     rt_hw_interrupt_umask(IRQ_PBA8_TIMER0_1);
 
     rt_system_scheduler_start();
-}
-#else
-void second_cpu_c_start(void)
-{
-//  rt_hw_vector_init();
-
-    arm_gic_cpu_init(0, REALVIEW_GIC_CPU_BASE);
-
-    __raw_spin_lock(&rt_kernel_lock);
-
-    arm_gic_set_cpu(0, IRQ_PBA8_TIMER0_1, 0x2); //指定到cpu1
-    timer_init(0, 2000000);
-    rt_hw_interrupt_umask(IRQ_PBA8_TIMER0_1);
-
-    asm volatile ("cpsie i":::"memory","cc");
-
-    __raw_spin_unlock(&rt_kernel_lock);
-    rt_kprintf("cpu1 init\n");
-	while (1)
-    {
-//        rt_kprintf(".");
-        asm volatile ("wfe");
-        __raw_spin_lock(&rt_kernel_lock);
-        __raw_spin_unlock(&rt_kernel_lock);
-	}
-}
-#endif
-
-int cnt1 = 0;
-
-#define GIC_ACK_INTID_MASK              0x000003ff
-void secondy_irq_handler(void)
-{
-    int ir;
-    int fullir;
-    unsigned int cpu_id;
-
-    __asm__ volatile (
-            "mrc p15, 0, %0, c0, c0, 5"
-            :"=r"(cpu_id)
-            );
-    cpu_id &= 0xf;
-
-    fullir = arm_gic_get_active_irq(0);
-    ir = fullir & GIC_ACK_INTID_MASK;
-
-    if (ir == 1023) {
-        /* Spurious interrupt */
-        return;
-    }
-    if (ir < 16) {
-        rt_kprintf("IPI %d on cpu %d\n", ir, cpu_id);
-    } else if (ir == IRQ_PBA8_TIMER0_1) {
-        timer_clear_pending(0);
-        rt_kprintf("[cpu%d timer cnt %d]\n", cpu_id, ++cnt1);
-    } else {
-        rt_kprintf("unkown IRQ no %d 0x%08x\n", ir, cpu_id);
-    }
-
-    /* end of interrupt */
-    arm_gic_ack(0, fullir);
 }
