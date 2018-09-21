@@ -47,6 +47,11 @@ rt_enable_local_irq:
 rt_hw_context_switch_to:
     ldr sp, [r0]            @ get new task stack pointer
 
+    push    {r0-r12,lr}
+    mov     r0, r1
+    bl      rt_post_switch
+    pop     {r0-r12,lr}
+
     ldmfd sp!, {r4}         @ pop new task spsr
     msr spsr_cxsf, r4
 

@@ -31,7 +31,8 @@
 #include <rthw.h>
 #include <rtthread.h>
 
-static rt_tick_t rt_tick = 0;
+static rt_tick_t percpu_rt_tick[RT_CPUS_NR] = {0};
+#define rt_tick percpu_rt_tick[rt_cpuid()]
 
 extern void rt_timer_check(void);
 

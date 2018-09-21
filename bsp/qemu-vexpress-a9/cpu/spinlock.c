@@ -2,9 +2,8 @@
 #include "rthw.h"
 #include "spinlock.h"
 
-extern struct rt_thread *rt_current_thread;
-
-int kernel_lock = 0;
+int _kernel_lock[RT_CPUS_NR] = {0};
+#define kernel_lock _kernel_lock[rt_cpuid()]
 
 raw_spinlock_t rt_kernel_lock;
 

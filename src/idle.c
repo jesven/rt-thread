@@ -46,9 +46,9 @@
 #endif
 #endif
 
-static struct rt_thread idle;
+static struct rt_thread idle[RT_CPUS_NR];
 ALIGN(RT_ALIGN_SIZE)
-static rt_uint8_t rt_thread_stack[IDLE_THREAD_STACK_SIZE];
+static rt_uint8_t rt_thread_stack[RT_CPUS_NR][IDLE_THREAD_STACK_SIZE];
 
 extern rt_list_t rt_thread_defunct;
 
@@ -256,6 +256,18 @@ static void rt_thread_idle_entry(void *parameter)
     }
 }
 
+static void rt_thread_secondy_idle_entry(void *parameter)
+{
+    while (1)
+    {
+        //int cpuid;
+        //cpuid = rt_cpuid();
+        asm volatile ("wfe":::"memory", "cc");
+        //rt_kprintf("now in secondy idle, CPU %d\n", cpuid);
+        rt_schedule();
+    }
+}
+
 /**
  * @ingroup SystemInit
  *
@@ -265,18 +277,47 @@ static void rt_thread_idle_entry(void *parameter)
  */
 void rt_thread_idle_init(void)
 {
-    /* initialize thread */
-    rt_thread_init(&idle,
-                   "tidle",
+#if 0
+    int cpu;
+    for (cpu = 0; cpu < RT_CPUS_NR; cpu++)
+    {
+        /* initialize thread */
+        rt_thread_init(&idle[cpu],
+                       "tidle",
+                       rt_thread_idle_entry,
+                       RT_NULL,
+                       &rt_thread_stack[cpu][0],
+                       sizeof(rt_thread_stack[cpu]),
+                       RT_THREAD_PRIORITY_MAX - 1,
+                       32);
+        idle[cpu].bind_cpu = (rt_uint8_t)cpu;
+        /* startup */
+        rt_thread_startup(&idle[cpu]);
+    }
+#endif
+    rt_thread_init(&idle[0],
+                   "tidle0",
                    rt_thread_idle_entry,
                    RT_NULL,
-                   &rt_thread_stack[0],
-                   sizeof(rt_thread_stack),
+                   &rt_thread_stack[0][0],
+                   sizeof(rt_thread_stack[0]),
                    RT_THREAD_PRIORITY_MAX - 1,
                    32);
-
+    idle[0].bind_cpu = 0;
     /* startup */
-    rt_thread_startup(&idle);
+    rt_thread_startup(&idle[0]);
+
+    rt_thread_init(&idle[1],
+                   "tidle1",
+                   rt_thread_secondy_idle_entry,
+                   RT_NULL,
+                   &rt_thread_stack[1][0],
+                   sizeof(rt_thread_stack[0]),
+                   RT_THREAD_PRIORITY_MAX - 1,
+                   32);
+    idle[1].bind_cpu = 1;
+    /* startup */
+    rt_thread_startup(&idle[1]);
 }
 
 /**

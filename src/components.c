@@ -259,6 +259,8 @@ int rtthread_startup(void)
     /* idle thread initialization */
     rt_thread_idle_init();
 
+    spin_lock();
+
     secondy_cpu_up();
     /* start scheduler */
     rt_system_scheduler_start();

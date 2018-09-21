@@ -62,7 +62,7 @@ void rt_interrupt_leave_sethook(void (*hook)(void))
 
 /**@{*/
 
-volatile rt_uint8_t rt_interrupt_nest;
+volatile rt_uint8_t rt_percpu_interrupt_nest[RT_CPUS_NR];
 
 /**
  * This function will be invoked by BSP, when enter interrupt service routine
@@ -92,7 +92,6 @@ RTM_EXPORT(rt_interrupt_enter);
  *
  * @see rt_interrupt_enter
  */
-extern struct rt_thread *rt_current_thread;
 extern void rt_interrupt_check_schedule(void);
 void rt_interrupt_leave(void)
 {

@@ -43,8 +43,6 @@
 #include <rtthread.h>
 #include <rthw.h>
 
-extern rt_list_t rt_thread_priority_table[RT_THREAD_PRIORITY_MAX];
-extern struct rt_thread *rt_current_thread;
 extern rt_list_t rt_thread_defunct;
 
 #ifdef RT_USING_HOOK
@@ -122,11 +120,11 @@ void rt_thread_exit(void)
         rt_list_insert_after(&rt_thread_defunct, &(thread->tlist));
     }
 
-    /* enable interrupt */
-    rt_hw_interrupt_enable(level);
-
     /* switch to next task */
     rt_schedule();
+
+    /* enable interrupt */
+    rt_hw_interrupt_enable(level);
 }
 
 static rt_err_t _rt_thread_init(struct rt_thread *thread,
@@ -172,6 +170,9 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
     /* error and flags */
     thread->error = RT_EOK;
     thread->stat  = RT_THREAD_INIT;
+
+    /* cpu bind */
+    thread->bind_cpu = RT_CPUS_NR; //means no bind
 
     /* lock init */
     thread->scheduler_lock_nest = 0;
@@ -478,10 +479,10 @@ rt_err_t rt_thread_yield(void)
     if ((thread->stat & RT_THREAD_STAT_MASK) == RT_THREAD_READY &&
         thread->tlist.next != thread->tlist.prev)
     {
+        rt_schedule();
+
         /* enable interrupt */
         rt_hw_interrupt_enable(level);
-
-        rt_schedule();
 
         return RT_EOK;
     }
@@ -519,10 +520,10 @@ rt_err_t rt_thread_sleep(rt_tick_t tick)
     rt_timer_control(&(thread->thread_timer), RT_TIMER_CTRL_SET_TIME, &tick);
     rt_timer_start(&(thread->thread_timer));
 
+    rt_schedule();
+
     /* enable interrupt */
     rt_hw_interrupt_enable(temp);
-
-    rt_schedule();
 
     /* clear error number of this thread to RT_EOK */
     if (thread->error == -RT_ETIMEOUT)

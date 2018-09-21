@@ -362,11 +362,11 @@ void *rt_mp_alloc(rt_mp_t mp, rt_int32_t time)
             rt_timer_start(&(thread->thread_timer));
         }
 
-        /* enable interrupt */
-        rt_hw_interrupt_enable(level);
-
         /* do a schedule */
         rt_schedule();
+
+        /* enable interrupt */
+        rt_hw_interrupt_enable(level);
 
         if (thread->error != RT_EOK)
             return RT_NULL;
@@ -448,11 +448,11 @@ void rt_mp_free(void *block)
         /* decrease suspended thread count */
         mp->suspend_thread_count --;
 
-        /* enable interrupt */
-        rt_hw_interrupt_enable(level);
-
         /* do a schedule */
         rt_schedule();
+
+        /* enable interrupt */
+        rt_hw_interrupt_enable(level);
 
         return;
     }

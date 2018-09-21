@@ -16,6 +16,7 @@
 #include <rtthread.h>
 
 #include "board.h"
+#include "spinlock.h"
 
 #define TIMER_LOAD(hw_base)             __REG32(hw_base + 0x00)
 #define TIMER_VALUE(hw_base)            __REG32(hw_base + 0x04)
@@ -168,6 +169,31 @@ void timer_clear_pending(int timer) {
     }
 }
 
+static void rt_hw_timer2_isr(int vector, void *param)
+{
+    rt_tick_increase();
+    /* clear interrupt */
+    timer_clear_pending(0);
+}
+
+void spin_lock(void);
+#if 1
+void second_cpu_c_start(void)
+{
+    rt_hw_vector_init();
+
+    spin_lock();
+
+    arm_gic_cpu_init(0, REALVIEW_GIC_CPU_BASE);
+    arm_gic_set_cpu(0, IRQ_PBA8_TIMER0_1, 0x2); //指定到cpu1
+
+    timer_init(0, 1000);
+    rt_hw_interrupt_install(IRQ_PBA8_TIMER0_1, rt_hw_timer2_isr, RT_NULL, "tick");
+    rt_hw_interrupt_umask(IRQ_PBA8_TIMER0_1);
+
+    rt_system_scheduler_start();
+}
+#else
 void second_cpu_c_start(void)
 {
 //  rt_hw_vector_init();
@@ -192,6 +218,7 @@ void second_cpu_c_start(void)
         __raw_spin_unlock(&rt_kernel_lock);
 	}
 }
+#endif
 
 int cnt1 = 0;
 
