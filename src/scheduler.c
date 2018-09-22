@@ -183,7 +183,7 @@ void rt_system_scheduler_start(void)
 #else
     l_highest_ready_priority = __rt_ffs(rt_thread_ready_priority_group) - 1;
 #endif
-    
+
     if (highest_ready_priority <= l_highest_ready_priority) //这里用=,表示全局任务更优先
     {
         /* get switch to thread */
@@ -201,6 +201,7 @@ void rt_system_scheduler_start(void)
 
     //rt_current_thread = to_thread;
 
+    to_thread->oncpu = 1;
     rt_schedule_remove_thread(to_thread);
 
     /* switch to new thread */
@@ -236,6 +237,7 @@ void rt_schedule(void)
 
         if (rt_global_thread_ready_priority_group != 0 || rt_thread_ready_priority_group != 0)
         {
+            rt_current_thread->oncpu = 0;
             if ((rt_current_thread->stat & RT_THREAD_STAT_MASK) == RT_THREAD_READY)
             {
                 rt_schedule_insert_thread(rt_current_thread);
@@ -281,6 +283,7 @@ void rt_schedule(void)
 
                 RT_OBJECT_HOOK_CALL(rt_scheduler_hook, (from_thread, to_thread));
 
+                to_thread->oncpu = 1;
                 rt_schedule_remove_thread(to_thread);
 
                 /* switch to new thread */
@@ -313,6 +316,7 @@ void rt_schedule(void)
             }
             else
             {
+                rt_current_thread->oncpu = 1;
                 rt_schedule_remove_thread(rt_current_thread);
                 /* enable interrupt */
                 rt_hw_interrupt_enable(level);
@@ -342,6 +346,7 @@ void rt_interrupt_check_schedule(void)
 
         if (rt_global_thread_ready_priority_group != 0 || rt_thread_ready_priority_group != 0)
         {
+            rt_current_thread->oncpu = 0;
             if ((rt_current_thread->stat & RT_THREAD_STAT_MASK) == RT_THREAD_READY)
             {
                 rt_schedule_insert_thread(rt_current_thread);
@@ -385,6 +390,7 @@ void rt_interrupt_check_schedule(void)
                 from_thread         = rt_current_thread;
 
                 RT_OBJECT_HOOK_CALL(rt_scheduler_hook, (from_thread, to_thread));
+                to_thread->oncpu = 1;
                 rt_schedule_remove_thread(to_thread);
 
 #ifdef RT_USING_OVERFLOW_CHECK
@@ -397,6 +403,7 @@ void rt_interrupt_check_schedule(void)
             }
             else
             {
+                rt_current_thread->oncpu = 1;
                 rt_schedule_remove_thread(rt_current_thread);
             }
         }
@@ -422,8 +429,14 @@ void rt_schedule_insert_thread(struct rt_thread *thread)
     /* change stat */
     thread->stat = RT_THREAD_READY | (thread->stat & ~RT_THREAD_STAT_MASK);
 
+    if (thread->oncpu)
+    {
+        rt_hw_interrupt_enable(temp);
+        return;
+    }
+
     /* insert thread to ready list */
-    if (thread->bind_cpu == RT_CPUS_NR)    
+    if (thread->bind_cpu == RT_CPUS_NR)
     {
         rt_list_insert_before(&(rt_global_thread_priority_table[thread->current_priority]),
                               &(thread->tlist));
@@ -448,7 +461,7 @@ void rt_schedule_insert_thread(struct rt_thread *thread)
                   thread->high_mask));
 #endif
 
-    if (thread->bind_cpu == RT_CPUS_NR)    
+    if (thread->bind_cpu == RT_CPUS_NR)
     {
 #if RT_THREAD_PRIORITY_MAX > 32
         rt_global_thread_ready_table[thread->number] |= thread->high_mask;
@@ -499,7 +512,7 @@ void rt_schedule_remove_thread(struct rt_thread *thread)
 
     /* remove thread from ready list */
     rt_list_remove(&(thread->tlist));
-    if (thread->bind_cpu == RT_CPUS_NR)    
+    if (thread->bind_cpu == RT_CPUS_NR)
     {
         if (rt_list_isempty(&(rt_global_thread_priority_table[thread->current_priority])))
         {

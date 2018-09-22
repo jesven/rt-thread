@@ -177,6 +177,7 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
     /* lock init */
     thread->scheduler_lock_nest = 0;
     thread->kernel_lock_nest = 0;
+    thread->oncpu = 0;
 
     /* initialize cleanup function and user data */
     thread->cleanup   = 0;
@@ -685,7 +686,11 @@ rt_err_t rt_thread_suspend(rt_thread_t thread)
 
         return -RT_ERROR;
     }
-
+    if (thread != rt_current_thread)
+    {
+        rt_kprintf("suspend no current!!!!\n");
+        while(1);
+    }
     /* disable interrupt */
     temp = rt_hw_interrupt_disable();
 
