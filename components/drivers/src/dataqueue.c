@@ -106,11 +106,11 @@ rt_err_t rt_data_queue_push(struct rt_data_queue *queue,
             rt_timer_start(&(thread->thread_timer));
         }
 
-        /* do schedule */
-        rt_schedule();
-
         /* enable interrupt */
         rt_hw_interrupt_enable(level);
+
+        /* do schedule */
+        rt_schedule();
 
         /* thread is waked up */
         result = thread->error;
@@ -132,11 +132,10 @@ rt_err_t rt_data_queue_push(struct rt_data_queue *queue,
 
         /* resume it */
         rt_thread_resume(thread);
+        rt_hw_interrupt_enable(level);
 
         /* perform a schedule */
         rt_schedule();
-
-        rt_hw_interrupt_enable(level);
 
         return result;
     }
@@ -197,11 +196,11 @@ rt_err_t rt_data_queue_pop(struct rt_data_queue *queue,
             rt_timer_start(&(thread->thread_timer));
         }
 
-        /* do schedule */
-        rt_schedule();
-
         /* enable interrupt */
         rt_hw_interrupt_enable(level);
+
+        /* do schedule */
+        rt_schedule();
 
         /* thread is waked up */
         result = thread->error;
@@ -227,11 +226,10 @@ rt_err_t rt_data_queue_pop(struct rt_data_queue *queue,
 
             /* resume it */
             rt_thread_resume(thread);
+            rt_hw_interrupt_enable(level);
 
             /* perform a schedule */
             rt_schedule();
-
-            rt_hw_interrupt_enable(level);
         }
         else
         {

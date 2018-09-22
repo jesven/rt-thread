@@ -91,8 +91,8 @@ rt_inline rt_err_t rt_wm_que_inc(struct rt_watermark_queue *wg,
                              &timeout);
             rt_timer_start(&(thread->thread_timer));
         }
-        rt_schedule();
         rt_hw_interrupt_enable(ilvl);
+        rt_schedule();
         if (thread->error != RT_EOK)
             return thread->error;
 
@@ -142,9 +142,8 @@ rt_inline void rt_wm_que_dec(struct rt_watermark_queue *wg)
             need_sched = 1;
         }
     }
+    rt_hw_interrupt_enable(ilvl);
 
     if (need_sched)
         rt_schedule();
-
-    rt_hw_interrupt_enable(ilvl);
 }
