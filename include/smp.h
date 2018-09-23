@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #define RT_CPUS_NR 2
+#define RT_CPU_MASK 3
 
 static inline int rt_cpuid(void)
 {

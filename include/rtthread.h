@@ -188,6 +188,7 @@ void rt_system_scheduler_start(void);
 
 void rt_schedule(void);
 void rt_schedule_insert_thread(struct rt_thread *thread);
+void rt_schedule_insert_thread_no_send_ipi(struct rt_thread *thread);
 void rt_schedule_remove_thread(struct rt_thread *thread);
 
 void rt_enter_critical(void);

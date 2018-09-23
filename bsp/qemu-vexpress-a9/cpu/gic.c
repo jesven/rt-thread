@@ -286,3 +286,8 @@ void dist_ipi_send(int irq, int cpu)
     }
     GIC_DIST_SOFTINT(_gic_table[0].dist_hw_base) = ((1 << cpu) << 16) | irq;
 }
+
+void dist_ipi_send_mask(int irq, unsigned int cpu_mask)
+{
+    GIC_DIST_SOFTINT(_gic_table[0].dist_hw_base) = (cpu_mask << 16) | irq;
+}

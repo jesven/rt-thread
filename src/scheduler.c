@@ -41,6 +41,9 @@
 #include <rthw.h>
 #include "spinlock.h"
 
+void dist_ipi_send(int irq, int cpu);
+void dist_ipi_send_mask(int irq, unsigned int cpu_mask);
+
 rt_list_t rt_global_thread_priority_table[RT_THREAD_PRIORITY_MAX];
 rt_list_t rt_percpu_thread_priority_table[RT_CPUS_NR][RT_THREAD_PRIORITY_MAX];
 
@@ -240,7 +243,7 @@ void rt_schedule(void)
             rt_current_thread->oncpu = 0;
             if ((rt_current_thread->stat & RT_THREAD_STAT_MASK) == RT_THREAD_READY)
             {
-                rt_schedule_insert_thread(rt_current_thread);
+                rt_schedule_insert_thread_no_send_ipi(rt_current_thread);
             }
 
 #if RT_THREAD_PRIORITY_MAX <= 32
@@ -285,6 +288,19 @@ void rt_schedule(void)
 
                 to_thread->oncpu = 1;
                 rt_schedule_remove_thread(to_thread);
+
+                if ((rt_current_thread->stat & RT_THREAD_STAT_MASK) == RT_THREAD_READY)
+                {
+                    if (rt_current_thread->bind_cpu == RT_CPUS_NR)
+                    {
+                        int cpu_id;
+                        rt_uint32_t cpu_mask;
+
+                        cpu_id = rt_cpuid();
+                        cpu_mask = RT_CPU_MASK ^ (1 << cpu_id);
+                        dist_ipi_send_mask(0, cpu_mask);
+                    }
+                }
 
                 /* switch to new thread */
                 RT_DEBUG_LOG(RT_DEBUG_SCHEDULER,
@@ -349,7 +365,7 @@ void rt_interrupt_check_schedule(void)
             rt_current_thread->oncpu = 0;
             if ((rt_current_thread->stat & RT_THREAD_STAT_MASK) == RT_THREAD_READY)
             {
-                rt_schedule_insert_thread(rt_current_thread);
+                rt_schedule_insert_thread_no_send_ipi(rt_current_thread);
             }
 #if RT_THREAD_PRIORITY_MAX <= 32
             highest_ready_priority = __rt_ffs(rt_global_thread_ready_priority_group) - 1;
@@ -393,6 +409,19 @@ void rt_interrupt_check_schedule(void)
                 to_thread->oncpu = 1;
                 rt_schedule_remove_thread(to_thread);
 
+                if ((rt_current_thread->stat & RT_THREAD_STAT_MASK) == RT_THREAD_READY)
+                {
+                    if (rt_current_thread->bind_cpu == RT_CPUS_NR)
+                    {
+                        int cpu_id;
+                        rt_uint32_t cpu_mask;
+
+                        cpu_id = rt_cpuid();
+                        cpu_mask = RT_CPU_MASK ^ (1 << cpu_id);
+                        dist_ipi_send_mask(0, cpu_mask);
+                    }
+                }
+
 #ifdef RT_USING_OVERFLOW_CHECK
                 _rt_scheduler_stack_check(to_thread);
 #endif
@@ -417,9 +446,11 @@ void rt_interrupt_check_schedule(void)
  * @param thread the thread to be inserted
  * @note Please do not invoke this function in user application.
  */
-void rt_schedule_insert_thread(struct rt_thread *thread)
+static void _rt_schedule_insert_thread(struct rt_thread *thread, int send_ipi)
 {
     register rt_base_t temp;
+    int cpu_id;
+    rt_uint32_t cpu_mask;
 
     RT_ASSERT(thread != RT_NULL);
 
@@ -440,11 +471,25 @@ void rt_schedule_insert_thread(struct rt_thread *thread)
     {
         rt_list_insert_before(&(rt_global_thread_priority_table[thread->current_priority]),
                               &(thread->tlist));
+        if (send_ipi)
+        {
+            cpu_id = rt_cpuid();
+            cpu_mask = RT_CPU_MASK ^ (1 << cpu_id);
+            dist_ipi_send_mask(0, cpu_mask);
+        }
     }
     else
     {
         rt_list_insert_before(&(rt_percpu_thread_priority_table[thread->bind_cpu][thread->current_priority]),
                               &(thread->tlist));
+        if (send_ipi)
+        {
+            cpu_id = rt_cpuid();
+            if (cpu_id != thread->bind_cpu)
+            {
+                dist_ipi_send(0, thread->bind_cpu);
+            }
+        }
     }
 
     /* set priority mask */
@@ -478,6 +523,16 @@ void rt_schedule_insert_thread(struct rt_thread *thread)
 
     /* enable interrupt */
     rt_hw_interrupt_enable(temp);
+}
+
+void rt_schedule_insert_thread(struct rt_thread *thread)
+{
+    _rt_schedule_insert_thread(thread, 1);
+}
+
+void rt_schedule_insert_thread_no_send_ipi(struct rt_thread *thread)
+{
+    _rt_schedule_insert_thread(thread, 0);
 }
 
 /*
