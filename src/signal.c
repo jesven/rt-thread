@@ -77,7 +77,7 @@ static void _signal_entry(void *parameter)
     dbg_log(DBG_LOG, "switch back to: 0x%08x\n", tid->sp);
     tid->stat &= ~RT_THREAD_STAT_SIGNAL;
 
-    rt_hw_context_switch_to((rt_uint32_t) & (tid->sp), tid);
+    rt_hw_context_switch_to((rt_uint32_t)&(tid->sp), tid);
 }
 
 /*
@@ -105,10 +105,10 @@ static void _signal_deliver(rt_thread_t tid)
         /* add signal state */
         tid->stat |= RT_THREAD_STAT_SIGNAL;
 
+        rt_hw_interrupt_enable(level);
+
         /* re-schedule */
         rt_schedule();
-
-        rt_hw_interrupt_enable(level);
     }
     else
     {
@@ -122,7 +122,7 @@ static void _signal_deliver(rt_thread_t tid)
             /* do signal action in self thread context */
             rt_thread_handle_sig(RT_TRUE);
         }
-        else if (!((tid->stat & RT_THREAD_STAT_MASK) & RT_THREAD_STAT_SIGNAL))
+        else if (!((tid->stat & RT_THREAD_STAT_SIGNAL_MASK) & RT_THREAD_STAT_SIGNAL))
         {
             /* add signal state */
             tid->stat |= RT_THREAD_STAT_SIGNAL;
@@ -132,12 +132,11 @@ static void _signal_deliver(rt_thread_t tid)
             tid->sp = rt_hw_stack_init((void *)_signal_entry, RT_NULL,
                                        (void *)((char *)tid->sig_ret - 32), RT_NULL);
 
+            rt_hw_interrupt_enable(level);
             dbg_log(DBG_LOG, "signal stack pointer @ 0x%08x\n", tid->sp);
 
             /* re-schedule */
             rt_schedule();
-
-            rt_hw_interrupt_enable(level);
         }
         else
         {
@@ -250,7 +249,6 @@ int rt_signal_wait(const rt_sigset_t *set, rt_siginfo_t *si, rt_int32_t timeout)
                          &timeout);
         rt_timer_start(&(tid->thread_timer));
     }
-
     rt_hw_interrupt_enable(level);
 
     /* do thread scheduling */

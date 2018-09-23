@@ -400,11 +400,11 @@ rt_err_t rt_sem_take(rt_sem_t sem, rt_int32_t time)
                 rt_timer_start(&(thread->thread_timer));
             }
 
-            /* do schedule */
-            rt_schedule();
-
             /* enable interrupt */
             rt_hw_interrupt_enable(temp);
+
+            /* do schedule */
+            rt_schedule();
 
             if (thread->error != RT_EOK)
             {
@@ -470,13 +470,13 @@ rt_err_t rt_sem_release(rt_sem_t sem)
     else
         sem->value ++; /* increase value */
 
-    if (need_schedule == RT_TRUE)
-        rt_schedule();
-
     /* enable interrupt */
     rt_hw_interrupt_enable(temp);
 
     /* resume a thread, re-schedule */
+    if (need_schedule == RT_TRUE)
+        rt_schedule();
+
     return RT_EOK;
 }
 RTM_EXPORT(rt_sem_release);
@@ -513,10 +513,10 @@ rt_err_t rt_sem_control(rt_sem_t sem, int cmd, void *arg)
         /* set new value */
         sem->value = (rt_uint16_t)value;
 
-        rt_schedule();
-
         /* enable interrupt */
         rt_hw_interrupt_enable(level);
+
+        rt_schedule();
 
         return RT_EOK;
     }
@@ -756,11 +756,11 @@ __again:
                     rt_timer_start(&(thread->thread_timer));
                 }
 
-                /* do schedule */
-                rt_schedule();
-
                 /* enable interrupt */
                 rt_hw_interrupt_enable(temp);
+
+                /* do schedule */
+                rt_schedule();
 
                 if (thread->error != RT_EOK)
                 {
@@ -880,12 +880,12 @@ rt_err_t rt_mutex_release(rt_mutex_t mutex)
         }
     }
 
+    /* enable interrupt */
+    rt_hw_interrupt_enable(temp);
+
     /* perform a schedule */
     if (need_schedule == RT_TRUE)
         rt_schedule();
-
-    /* enable interrupt */
-    rt_hw_interrupt_enable(temp);
 
     return RT_EOK;
 }
@@ -1110,12 +1110,12 @@ rt_err_t rt_event_send(rt_event_t event, rt_uint32_t set)
         }
     }
 
+    /* enable interrupt */
+    rt_hw_interrupt_enable(level);
+
     /* do a schedule */
     if (need_schedule == RT_TRUE)
         rt_schedule();
-
-    /* enable interrupt */
-    rt_hw_interrupt_enable(level);
 
     return RT_EOK;
 }
@@ -1218,11 +1218,11 @@ rt_err_t rt_event_recv(rt_event_t   event,
             rt_timer_start(&(thread->thread_timer));
         }
 
-        /* do a schedule */
-        rt_schedule();
-
         /* enable interrupt */
         rt_hw_interrupt_enable(level);
+
+        /* do a schedule */
+        rt_schedule();
 
         if (thread->error != RT_EOK)
         {
@@ -1275,10 +1275,10 @@ rt_err_t rt_event_control(rt_event_t event, int cmd, void *arg)
         /* init event set */
         event->set = 0;
 
-        rt_schedule();
-
         /* enable interrupt */
         rt_hw_interrupt_enable(level);
+
+        rt_schedule();
 
         return RT_EOK;
     }
@@ -1516,11 +1516,11 @@ rt_err_t rt_mb_send_wait(rt_mailbox_t mb,
             rt_timer_start(&(thread->thread_timer));
         }
 
-        /* re-schedule */
-        rt_schedule();
-
         /* enable interrupt */
         rt_hw_interrupt_enable(temp);
+
+        /* re-schedule */
+        rt_schedule();
 
         /* resume from suspend state */
         if (thread->error != RT_EOK)
@@ -1556,10 +1556,10 @@ rt_err_t rt_mb_send_wait(rt_mailbox_t mb,
     {
         rt_ipc_list_resume(&(mb->parent.suspend_thread));
 
-        rt_schedule();
-
         /* enable interrupt */
         rt_hw_interrupt_enable(temp);
+
+        rt_schedule();
 
         return RT_EOK;
     }
@@ -1664,11 +1664,11 @@ rt_err_t rt_mb_recv(rt_mailbox_t mb, rt_uint32_t *value, rt_int32_t timeout)
             rt_timer_start(&(thread->thread_timer));
         }
 
-        /* re-schedule */
-        rt_schedule();
-
         /* enable interrupt */
         rt_hw_interrupt_enable(temp);
+
+        /* re-schedule */
+        rt_schedule();
 
         /* resume from suspend state */
         if (thread->error != RT_EOK)
@@ -1705,12 +1705,12 @@ rt_err_t rt_mb_recv(rt_mailbox_t mb, rt_uint32_t *value, rt_int32_t timeout)
     {
         rt_ipc_list_resume(&(mb->suspend_sender_thread));
 
+        /* enable interrupt */
+        rt_hw_interrupt_enable(temp);
+
         RT_OBJECT_HOOK_CALL(rt_object_take_hook, (&(mb->parent.parent)));
 
         rt_schedule();
-
-        /* enable interrupt */
-        rt_hw_interrupt_enable(temp);
 
         return RT_EOK;
     }
@@ -1756,10 +1756,10 @@ rt_err_t rt_mb_control(rt_mailbox_t mb, int cmd, void *arg)
         mb->in_offset  = 0;
         mb->out_offset = 0;
 
-        rt_schedule();
-
         /* enable interrupt */
         rt_hw_interrupt_enable(level);
+
+        rt_schedule();
 
         return RT_EOK;
     }
@@ -2035,10 +2035,10 @@ rt_err_t rt_mq_send(rt_mq_t mq, void *buffer, rt_size_t size)
     {
         rt_ipc_list_resume(&(mq->parent.suspend_thread));
 
-        rt_schedule();
-
         /* enable interrupt */
         rt_hw_interrupt_enable(temp);
+
+        rt_schedule();
 
         return RT_EOK;
     }
@@ -2119,10 +2119,10 @@ rt_err_t rt_mq_urgent(rt_mq_t mq, void *buffer, rt_size_t size)
     {
         rt_ipc_list_resume(&(mq->parent.suspend_thread));
 
-        rt_schedule();
-
         /* enable interrupt */
         rt_hw_interrupt_enable(temp);
+
+        rt_schedule();
 
         return RT_EOK;
     }
@@ -2219,11 +2219,11 @@ rt_err_t rt_mq_recv(rt_mq_t    mq,
             rt_timer_start(&(thread->thread_timer));
         }
 
-        /* re-schedule */
-        rt_schedule();
-
         /* enable interrupt */
         rt_hw_interrupt_enable(temp);
+
+        /* re-schedule */
+        rt_schedule();
 
         /* recv message */
         if (thread->error != RT_EOK)
@@ -2324,10 +2324,10 @@ rt_err_t rt_mq_control(rt_mq_t mq, int cmd, void *arg)
         /* clean entry */
         mq->entry = 0;
 
-        rt_schedule();
-
         /* enable interrupt */
         rt_hw_interrupt_enable(level);
+
+        rt_schedule();
 
         return RT_EOK;
     }
