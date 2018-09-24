@@ -177,7 +177,7 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
     /* lock init */
     thread->scheduler_lock_nest = 0;
     thread->kernel_lock_nest = 0;
-    thread->oncpu = 0;
+    thread->oncpu = RT_CPUS_NR;
 
     /* initialize cleanup function and user data */
     thread->cleanup   = 0;
