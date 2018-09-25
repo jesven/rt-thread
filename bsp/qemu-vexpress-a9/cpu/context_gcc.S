@@ -101,14 +101,10 @@ rt_hw_context_switch_interrupt:
     ldr r3, =rt_thread_switch_interrupt_to_thread
 	str r2, [r3]
     ldr r2, =rt_thread_switch_interrupt_flag
-    ldr r3, [r2]
-    cmp r3, #1
-    beq _reswitch
     ldr ip, =rt_interrupt_from_thread   @ set rt_interrupt_from_thread
     mov r3, #1              @ set rt_thread_switch_interrupt_flag to 1
     str r0, [ip]
     str r3, [r2]
-_reswitch:
     ldr r2, =rt_interrupt_to_thread     @ set rt_interrupt_to_thread
     str r1, [r2]
     bx  lr
