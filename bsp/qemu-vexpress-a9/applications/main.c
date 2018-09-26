@@ -6,12 +6,9 @@
 
 int main(void)
 {
-    rt_uint32_t level;
-
-    level = rt_hw_interrupt_disable();
+    rt_enter_critical();
     rt_kprintf("hello rt-thread\n");
-    rt_hw_interrupt_enable(level);
-
+    rt_exit_critical();
     return 0;
 }
 
