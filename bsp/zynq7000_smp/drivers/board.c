@@ -102,7 +102,51 @@ void secondy_cpu_up(void)
 #include "gic.h"
 #include "stdint.h"
 
+typedef struct
+{
+    volatile rt_uint32_t COUNTER_LOW;
+    volatile rt_uint32_t COUNTER_HIGH;
+    volatile rt_uint32_t CONTROL;
+    volatile rt_uint32_t ISR_STATUS;
+    volatile rt_uint32_t COMPARE_LOW;
+    volatile rt_uint32_t COMPARE_HIGH;
+    volatile rt_uint32_t AUTO_INC;
+} gtimer_reg_t;
 
+#define GLOBAL_TIMER                ((gtimer_reg_t*)Zynq7000_TIMER_GLOBAL_BASE)
+
+#define GT_CTRL_TIMER_ENABLE             (1 << 0)
+#define GT_CTRL_COMP_ENABLE              (1 << 1)
+#define GT_CTRL_IRQ_ENABLE               (1 << 2)
+#define GT_CTRL_AUTO_INC_ENABLE          (1 << 3)
+
+#define GT_ISR_STATUS_CLEAR              (1 << 0)
+
+static void gtimer_init(void)
+{
+    GLOBAL_TIMER->CONTROL = 0;
+
+    GLOBAL_TIMER->COMPARE_LOW = 0;
+    GLOBAL_TIMER->COMPARE_HIGH = 0;
+
+    GLOBAL_TIMER->COMPARE_LOW = APU_FREQ/2/RT_TICK_PER_SECOND;
+    GLOBAL_TIMER->COMPARE_HIGH = 0;
+
+    GLOBAL_TIMER->AUTO_INC = APU_FREQ/2;
+    GLOBAL_TIMER->AUTO_INC = APU_FREQ/2/RT_TICK_PER_SECOND;
+
+    GLOBAL_TIMER->CONTROL = GT_CTRL_AUTO_INC_ENABLE |\
+                            GT_CTRL_IRQ_ENABLE |\
+                            GT_CTRL_COMP_ENABLE |\
+                            GT_CTRL_TIMER_ENABLE;
+}
+
+static void gtimer_isr(int vector, void *param)
+{
+    rt_tick_increase();
+    /* clear interrupt */
+    GLOBAL_TIMER->ISR_STATUS = GT_ISR_STATUS_CLEAR;
+}
 
 void second_cpu_c_start(void)
 {
@@ -111,11 +155,11 @@ void second_cpu_c_start(void)
     spin_lock();
 
     arm_gic_cpu_init(0, Zynq7000_GIC_CPU_BASE);
-//    arm_gic_set_cpu(0, IRQ_PBA8_TIMER0_1, 0x2); //指定到cpu1
+    arm_gic_set_cpu(0, IRQ_Zynq7000_GTIMER, 0x2); //指定到cpu1
 
-//    timer_init(0, 1000);
-//    rt_hw_interrupt_install(IRQ_PBA8_TIMER0_1, rt_hw_timer2_isr, RT_NULL, "tick");
-//    rt_hw_interrupt_umask(IRQ_PBA8_TIMER0_1);
+    gtimer_init();
+    rt_hw_interrupt_install(IRQ_Zynq7000_GTIMER, gtimer_isr, RT_NULL, "tick");
+    rt_hw_interrupt_umask(IRQ_Zynq7000_GTIMER);
 
     rt_system_scheduler_start();
 }

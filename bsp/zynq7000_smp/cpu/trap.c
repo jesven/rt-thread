@@ -151,7 +151,6 @@ void rt_hw_trap_irq(void)
 #if 0
     if (ir == 0)
     {
-        /* Spurious interrupt */
         rt_kprintf("cpu %d recieve ipi\n", rt_cpuid());
     }
 #endif

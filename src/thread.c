@@ -688,7 +688,7 @@ rt_err_t rt_thread_suspend(rt_thread_t thread)
     }
     if (thread != rt_current_thread)
     {
-        rt_kprintf("suspend no current!!!!\n");
+        rt_kprintf("suspend: thread is not current!!!!\n");
         while(1);
     }
     /* disable interrupt */
