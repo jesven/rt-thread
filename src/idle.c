@@ -246,13 +246,7 @@ static void rt_thread_secondy_idle_entry(void *parameter)
 {
     while (1)
     {
-        //int cpuid;
-        //cpuid = rt_cpuid();
         asm volatile ("wfe":::"memory", "cc");
-        //rt_kprintf("now in secondy idle, CPU %d\n", cpuid);
-
-        //rt_kprintf("1");
-        //rt_schedule();
     }
 }
 
