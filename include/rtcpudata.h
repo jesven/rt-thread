@@ -19,7 +19,7 @@ extern "C" {
 #endif
 
 #define RT_CPUS_NR 2
-#define RT_CPU_MASK 3
+#define RT_CPU_MASK ((1 << RT_CPUS_NR) - 1)
 
 typedef struct {
     rt_uint8_t rt_cpu_interrupt_nest;
