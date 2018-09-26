@@ -62,7 +62,6 @@ rt_tick_t rt_tick_get(void)
 {
     /* return the global tick */
     return percpu_rt_tick[0];
-    //return rt_tick;
 }
 RTM_EXPORT(rt_tick_get);
 
@@ -74,7 +73,7 @@ void rt_tick_set(rt_tick_t tick)
     rt_base_t level;
 
     level = rt_hw_interrupt_disable();
-    rt_tick = tick;
+    percpu_rt_tick[0] = tick;
     rt_hw_interrupt_enable(level);
 }
 
