@@ -200,7 +200,7 @@ static void at_do_event_changes(struct at_socket *sock, at_event_t event, rt_boo
     {
         if (is_plus)
         {
-            sock->sendevent++;
+            sock->sendevent = 1;
 
 #ifdef SAL_USING_POSIX
             rt_wqueue_wakeup(&sock->wait_head, (void*) POLLOUT);
@@ -209,7 +209,7 @@ static void at_do_event_changes(struct at_socket *sock, at_event_t event, rt_boo
         }
         else if (sock->sendevent)
         {
-            sock->sendevent --;
+            sock->sendevent = 0;
         }
         break;
     }
@@ -248,7 +248,31 @@ static void at_do_event_changes(struct at_socket *sock, at_event_t event, rt_boo
         break;
     }
     default:
-        LOG_E("Not supported event (%d)", event)
+        LOG_E("Not supported event (%d)", event);
+    }
+}
+
+static void at_do_event_clean(struct at_socket *sock, at_event_t event)
+{
+    switch (event)
+    {
+    case AT_EVENT_SEND:
+    {
+        sock->sendevent = 0;
+        break;
+    }
+    case AT_EVENT_RECV:
+    {
+        sock->rcvevent = 0;
+        break;
+    }
+    case AT_EVENT_ERROR:
+    {
+        sock->errevent = 0;
+        break;
+    }
+    default:
+        LOG_E("Not supported event (%d)", event);
     }
 }
 
@@ -385,6 +409,9 @@ int at_closesocket(int socket)
         return -1;
     }
 
+    /* deal with TCP server actively disconnect */
+    rt_thread_delay(rt_tick_from_millisecond(100));
+    
     sock = at_get_socket(socket);
     if (sock == RT_NULL)
     {
@@ -401,10 +428,13 @@ int at_closesocket(int socket)
         if (at_dev_ops->at_closesocket(socket) != 0)
         {
             LOG_E("AT socket (%d) closesocket failed!", socket);
+            free_socket(sock);
+            return -1;
         }
     }
 
-    return free_socket(sock);
+    free_socket(sock); 
+    return 0;
 }
 
 int at_shutdown(int socket, int how)
@@ -427,10 +457,13 @@ int at_shutdown(int socket, int how)
         if (at_dev_ops->at_closesocket(socket) != 0)
         {
             LOG_E("AT socket (%d) shutdown failed!", socket);
+            free_socket(sock);
+            return -1;
         }
     }
 
-    return free_socket(sock);
+    free_socket(sock);
+    return 0;
 }
 
 int at_bind(int socket, const struct sockaddr *name, socklen_t namelen)
@@ -504,6 +537,7 @@ static void at_closed_notice_cb(int socket, at_socket_evt_t event, const char *b
     sock->state = AT_SOCKET_CLOSED;
     rt_sem_release(sock->recv_notice);
 }
+
 int at_connect(int socket, const struct sockaddr *name, socklen_t namelen)
 {
     struct at_socket *sock;
@@ -555,6 +589,8 @@ __exit:
         at_do_event_changes(sock, AT_EVENT_ERROR, RT_TRUE);
     }
 
+    at_do_event_changes(sock, AT_EVENT_SEND, RT_TRUE);
+    
     return result;
 }
 
@@ -602,7 +638,13 @@ int at_recvfrom(int socket, void *mem, size_t len, int flags, struct sockaddr *f
         sock->state = AT_SOCKET_CONNECT;
     }
 
-    if (sock->state != AT_SOCKET_CONNECT)
+    /* socket passively closed, receive function return 0 */
+    if (sock->state == AT_SOCKET_CLOSED)
+    {
+        result = 0;
+        goto __exit;
+    }
+    else if (sock->state != AT_SOCKET_CONNECT)
     {
         LOG_E("received data error, current socket (%d) state (%d) is error.", socket, sock->state);
         result = -1;
@@ -655,7 +697,7 @@ int at_recvfrom(int socket, void *mem, size_t len, int flags, struct sockaddr *f
             else
             {
                 LOG_D("received data exit, current socket (%d) is closed by remote.", socket);
-                result = -1;
+                result = 0;
                 goto __exit;
             }
         }
@@ -663,17 +705,23 @@ int at_recvfrom(int socket, void *mem, size_t len, int flags, struct sockaddr *f
 
 __exit:
 
-    if (result < 0)
+    if (recv_len > 0)
     {
-        at_do_event_changes(sock, AT_EVENT_ERROR, RT_TRUE);
+        result = recv_len;
+        at_do_event_changes(sock, AT_EVENT_RECV, RT_FALSE);
+
+        if (!rt_slist_isempty(&sock->recvpkt_list))
+        {
+            at_do_event_changes(sock, AT_EVENT_RECV, RT_TRUE);
+        }
+        else
+        {
+            at_do_event_clean(sock, AT_EVENT_RECV);
+        }
     }
     else
     {
-        result = recv_len;
-        if (recv_len)
-        {
-            at_do_event_changes(sock, AT_EVENT_RECV, RT_FALSE);
-        }
+        at_do_event_changes(sock, AT_EVENT_ERROR, RT_TRUE);
     }
 
     return result;
