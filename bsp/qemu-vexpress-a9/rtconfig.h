@@ -131,8 +131,7 @@
 #define RT_USING_MTD_NAND
 #define RT_MTD_NAND_DEBUG
 #define RT_USING_RTC
-/* RT_USING_SOFT_RTC is not set */
-/* RTC_SYNC_USING_NTP is not set */
+#define RT_USING_SOFT_RTC
 #define RT_USING_SDIO
 #define RT_SDIO_STACK_SIZE 512
 #define RT_SDIO_THREAD_PRIORITY 15
@@ -349,7 +348,7 @@
 
 /* sample package */
 
-/* PKG_USING_SAMPLES is not set */
+/* samples: kernel and components samples */
 
 /* example package: hello */
 
