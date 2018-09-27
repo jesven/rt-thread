@@ -7,6 +7,8 @@
 /* RT-Thread Kernel */
 
 #define RT_NAME_MAX 8
+#define RT_HAVE_SMP
+#define RT_CPUS_NR 2
 #define RT_ALIGN_SIZE 4
 /* RT_THREAD_PRIORITY_8 is not set */
 #define RT_THREAD_PRIORITY_32
@@ -50,7 +52,6 @@
 #define RT_USING_CONSOLE
 #define RT_CONSOLEBUF_SIZE 128
 #define RT_CONSOLE_DEVICE_NAME "uart0"
-/* RT_USING_MODULE is not set */
 #define ARCH_ARM
 #define ARCH_ARM_CORTEX_A
 #define ARCH_ARM_CORTEX_A9
@@ -98,7 +99,6 @@
 /* RT_USING_DFS_RAMFS is not set */
 /* RT_USING_DFS_UFFS is not set */
 /* RT_USING_DFS_JFFS2 is not set */
-/* RT_USING_DFS_NFS is not set */
 
 /* Device Drivers */
 
@@ -113,12 +113,16 @@
 /* RT_USING_PWM is not set */
 /* RT_USING_MTD_NOR is not set */
 /* RT_USING_MTD_NAND is not set */
+/* RT_USING_MTD is not set */
 /* RT_USING_RTC is not set */
 /* RT_USING_SDIO is not set */
 /* RT_USING_SPI is not set */
 /* RT_USING_WDT is not set */
-/* RT_USING_WIFI is not set */
 /* RT_USING_AUDIO is not set */
+
+/* Using WiFi */
+
+/* RT_USING_WIFI is not set */
 
 /* Using USB */
 
@@ -133,6 +137,7 @@
 #define RT_USING_POSIX_MMAP
 #define RT_USING_POSIX_TERMIOS
 #define RT_USING_POSIX_AIO
+/* RT_USING_MODULE is not set */
 
 /* Network */
 
@@ -242,6 +247,7 @@
 /* PKG_USING_SQLITE is not set */
 /* PKG_USING_RTI is not set */
 /* PKG_USING_LITTLEVGL2RTT is not set */
+/* PKG_USING_CMSIS is not set */
 
 /* peripheral libraries and drivers */
 
@@ -250,6 +256,9 @@
 /* PKG_USING_REALTEK_AMEBA is not set */
 /* PKG_USING_SHT2X is not set */
 /* PKG_USING_AHT10 is not set */
+/* PKG_USING_AP3216C is not set */
+/* PKG_USING_STM32_SDIO is not set */
+/* PKG_USING_ICM20608 is not set */
 
 /* miscellaneous packages */
 
@@ -265,7 +274,12 @@
 
 /* sample package */
 
-/* PKG_USING_SAMPLES is not set */
+/* samples: kernel and components samples */
+
+/* PKG_USING_KERNEL_SAMPLES is not set */
+/* PKG_USING_FILESYSTEM_SAMPLES is not set */
+/* PKG_USING_NETWORK_SAMPLES is not set */
+/* PKG_USING_PERIPHERAL_SAMPLES is not set */
 
 /* example package: hello */
 

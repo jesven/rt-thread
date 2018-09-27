@@ -7,6 +7,8 @@
 /* RT-Thread Kernel */
 
 #define RT_NAME_MAX 8
+#define RT_HAVE_SMP
+#define RT_CPUS_NR 2
 #define RT_ALIGN_SIZE 4
 /* RT_THREAD_PRIORITY_8 is not set */
 #define RT_THREAD_PRIORITY_32
@@ -50,7 +52,6 @@
 #define RT_USING_CONSOLE
 #define RT_CONSOLEBUF_SIZE 128
 #define RT_CONSOLE_DEVICE_NAME "uart0"
-/* RT_USING_MODULE is not set */
 #define ARCH_ARM
 #define ARCH_ARM_CORTEX_A
 #define ARCH_ARM_CORTEX_A9
@@ -130,14 +131,17 @@
 #define RT_USING_MTD_NOR
 #define RT_USING_MTD_NAND
 #define RT_MTD_NAND_DEBUG
+/* RT_USING_MTD is not set */
 #define RT_USING_RTC
 #define RT_USING_SOFT_RTC
+/* RTC_SYNC_USING_NTP is not set */
 #define RT_USING_SDIO
 #define RT_SDIO_STACK_SIZE 512
 #define RT_SDIO_THREAD_PRIORITY 15
 #define RT_MMCSD_STACK_SIZE 1024
 #define RT_MMCSD_THREAD_PREORITY 22
 #define RT_MMCSD_MAX_PARTITION 16
+/* RT_SDIO_DEBUG is not set */
 #define RT_USING_SPI
 #define RT_USING_SPI_MSD
 #define RT_USING_SFUD
@@ -149,8 +153,11 @@
 /* RT_USING_ENC28J60 is not set */
 /* RT_USING_SPI_WIFI is not set */
 #define RT_USING_WDT
-/* RT_USING_WIFI is not set */
 /* RT_USING_AUDIO is not set */
+
+/* Using WiFi */
+
+/* RT_USING_WIFI is not set */
 
 /* Using USB */
 
@@ -165,6 +172,7 @@
 #define RT_USING_POSIX_MMAP
 #define RT_USING_POSIX_TERMIOS
 #define RT_USING_POSIX_AIO
+/* RT_USING_MODULE is not set */
 
 /* Network */
 
@@ -325,6 +333,7 @@
 /* PKG_USING_SQLITE is not set */
 /* PKG_USING_RTI is not set */
 /* PKG_USING_LITTLEVGL2RTT is not set */
+/* PKG_USING_CMSIS is not set */
 
 /* peripheral libraries and drivers */
 
@@ -333,6 +342,9 @@
 /* PKG_USING_REALTEK_AMEBA is not set */
 /* PKG_USING_SHT2X is not set */
 /* PKG_USING_AHT10 is not set */
+/* PKG_USING_AP3216C is not set */
+/* PKG_USING_STM32_SDIO is not set */
+/* PKG_USING_ICM20608 is not set */
 
 /* miscellaneous packages */
 
@@ -349,6 +361,11 @@
 /* sample package */
 
 /* samples: kernel and components samples */
+
+/* PKG_USING_KERNEL_SAMPLES is not set */
+/* PKG_USING_FILESYSTEM_SAMPLES is not set */
+/* PKG_USING_NETWORK_SAMPLES is not set */
+/* PKG_USING_PERIPHERAL_SAMPLES is not set */
 
 /* example package: hello */
 
