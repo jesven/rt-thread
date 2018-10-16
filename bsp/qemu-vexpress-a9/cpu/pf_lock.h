@@ -1,25 +1,18 @@
 #ifndef  __PF_LOCK_H__
 #define  __PF_LOCK_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef RT_HAVE_SMP
-typedef struct {
-    union {
-        unsigned long slock;
-        struct __raw_tickets {
-            unsigned short owner;
-            unsigned short next;
-        } tickets;
-    };
+typedef union {
+    unsigned long slock;
+    struct __raw_tickets {
+        unsigned short owner;
+        unsigned short next;
+    } tickets;
 } raw_spinlock_t;
-
-extern raw_spinlock_t _rt_kernel_lock;
-extern raw_spinlock_t _rt_scheduler_lock;
-
-#define rt_pf_kernel_lock() __raw_spin_lock(&_rt_kernel_lock);
-#define rt_pf_kernel_unlock() __raw_spin_unlock(&_rt_kernel_lock);
-
-#define rt_pf_scheduler_lock() __raw_spin_lock(&_rt_scheduler_lock);
-#define rt_pf_scheduler_unlock() __raw_spin_unlock(&_rt_scheduler_lock);
 
 static inline void __raw_spin_lock(raw_spinlock_t *lock)
 {
@@ -57,6 +50,12 @@ static inline void __raw_spin_unlock(raw_spinlock_t *lock)
     __asm__ volatile ("dsb ishst\nsev":::"memory");
 }
 
+#define __RAW_SPIN_LOCK_INITIALIZER(lockname)  { .slock = 0 }
+
 #endif /*RT_HAVE_SMP*/
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  /*__PF_LOCK_H__*/
