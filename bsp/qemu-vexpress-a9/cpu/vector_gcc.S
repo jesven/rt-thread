@@ -49,7 +49,8 @@ _vector_reset:
 _vector_undef:
     .word vector_undef
 _vector_swi:
-    .word vector_swi
+    /* .word vector_swi */
+    .word SVC_Handler
 _vector_pabt:
     .word vector_pabt
 _vector_dabt:
