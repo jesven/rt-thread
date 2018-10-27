@@ -75,17 +75,12 @@ lwp_user_entry:
 .global SVC_Handler
 .type SVC_Handler, % function
 SVC_Handler:
+    mov sp, r0
     cps #Mode_SYS
-    push {r0}
-    ldr r0, =usr_stack_point
-    str sp, [r0]
-    pop {r0}
+    mov r0, sp
     cps #Mode_SVC
-    ldr sp, =usr_stack_point
-    ldr sp, [sp]
-    add sp, #4
-
-    push {r0}
+    stmfd r0!, {sp}  /* push {r0} */
+    mov sp, r0
 
     ldr r0, [lr, #-4]
     and r0, #0xff
@@ -131,6 +126,4 @@ svc_exit:
 .bss
 .align 2
 usr_lr:
-    .space 4
-usr_stack_point:
     .space 4

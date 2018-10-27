@@ -43,12 +43,24 @@
 #define DBG_LEVEL           DBG_WARNING
 #include <rtdbg.h>
 
+static void __exit_files(rt_thread_t t)
+{
+    struct rt_lwp *lwp = (struct rt_lwp *)t->lwp;
+    while (lwp->fdt.maxfd > 0)
+    {
+        lwp->fdt.maxfd --;
+        close(lwp->fdt.maxfd);
+    }
+}
+
 /* thread/process */
 void sys_exit(int value)
 {
     /* TODO: handle the return_value */
 
     dbg_log(DBG_LOG, "enter sys_exit\n");
+
+    __exit_files(rt_thread_self());
 
     rt_thread_delete(rt_thread_self());
 
