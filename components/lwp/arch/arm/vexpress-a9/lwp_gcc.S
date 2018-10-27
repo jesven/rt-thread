@@ -55,10 +55,10 @@
 lwp_user_entry:
 
     mov     r9, sp              /* set usr mode sp */
-    push    {r9, lr}
-    pop     {sp, lr}^
 
-    ldr     sp, =svc_stack_limit /* set svc mode sp */
+    cps #Mode_SYS
+    mov sp, r9
+    cps #Mode_SVC
 
     mrs     r9, cpsr
     bic     r9, #0x1f
@@ -75,6 +75,16 @@ lwp_user_entry:
 .global SVC_Handler
 .type SVC_Handler, % function
 SVC_Handler:
+    cps #Mode_SYS
+    push {r0}
+    ldr r0, =usr_stack_point
+    str sp, [r0]
+    pop {r0}
+    cps #Mode_SVC
+    ldr sp, =usr_stack_point
+    ldr sp, [sp]
+    add sp, #4
+
     push {r0}
 
     ldr r0, [lr, #-4]
@@ -120,9 +130,7 @@ svc_exit:
 
 .bss
 .align 2
-svc_stack:
-    .space 64
-svc_stack_limit:
 usr_lr:
     .space 4
-
+usr_stack_point:
+    .space 4
