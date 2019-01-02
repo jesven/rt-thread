@@ -1,0 +1,68 @@
+config RT_USING_TESTCASE
+    bool "Enable testcase"
+    default n
+
+if RT_USING_TESTCASE
+
+    menu "utest selftest"
+        config TC_USING_UTEST_FAIL_TC
+            bool "Enable utest selftest for fail"
+            default n
+            select RT_USING_UTEST
+
+        config TC_USING_UTEST_PASS_TC
+            bool "Enable utest selftest for pass"
+            default n
+            select RT_USING_UTEST
+    endmenu
+
+    menu "utest smp"
+        config TC_USING_UTEST_S1TO100
+            bool "Enable utest get sum from 1 to 100"
+            default n
+            select RT_USING_UTEST
+    endmenu
+
+    menu "filesystem test"
+        config TC_USING_FS_DFS_TC
+            bool "Enable filesystem test for dfs api"
+            default n
+            select RT_USING_DFS
+            select RT_USING_UTEST
+            select BSP_USING_SPI_FLASH
+        
+        if TC_USING_FS_DFS_TC
+            config TC_FS_DFS_BLOCK_DEV_NAME
+                string "Block device name"
+                default "W25Q256"
+            config TC_FS_DFS_NAME
+                string "Used filesystem name"
+                default "elm"
+            config TC_FS_DFS_MOUNT_PATH_
+                string "Filesystem mounted path"
+                default "/"
+        endif
+
+        config TC_USING_FS_STDLIB_TC
+            bool "Enable filesystem test for stdlib api"
+            default n
+            select RT_USING_UTEST
+
+        config TC_USING_FS_POSIX_TC
+            bool "Enable filesystem test for posix api"
+            default n
+            select RT_USING_UTEST
+        if TC_USING_FS_POSIX_TC
+            config TC_FS_POSIX_BLOCK_DEV_NAME
+                string "Block device name"
+                default "W25Q256"
+            config TC_FS_POSIX_NAME
+                string "Used filesystem name"
+                default "elm"
+            config TC_FS_POSIX_MOUNT_PATH_
+                string "Filesystem mounted path"
+                default "/"
+        endif
+    endmenu
+
+endif

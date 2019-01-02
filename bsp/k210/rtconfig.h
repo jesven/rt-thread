@@ -59,7 +59,7 @@
 /* RT_USING_DEVICE_OPS is not set */
 /* RT_USING_INTERRUPT_INFO is not set */
 #define RT_USING_CONSOLE
-#define RT_CONSOLEBUF_SIZE 128
+#define RT_CONSOLEBUF_SIZE 256
 #define RT_CONSOLE_DEVICE_NAME "uarths"
 #define RT_VER_NUM 0x40000
 #define ARCH_CPU_64BIT
@@ -180,7 +180,7 @@
 /* RT_USING_LOGTRACE is not set */
 /* RT_USING_RYM is not set */
 /* RT_USING_ULOG is not set */
-/* RT_USING_UTEST is not set */
+#define RT_USING_UTEST
 
 /* RT-Thread online packages */
 
@@ -299,26 +299,23 @@
 /* PKG_USING_NETWORK_SAMPLES is not set */
 /* PKG_USING_PERIPHERAL_SAMPLES is not set */
 /* PKG_USING_HELLO is not set */
+/* PKG_USING_VI is not set */
+#define RT_USING_TESTCASE
 
-/* Privated Packages of RealThread */
+/* utest selftest */
 
-/* PKG_USING_CODEC is not set */
-/* PKG_USING_PLAYER is not set */
-/* PKG_USING_PERSIMMON_SRC is not set */
-/* PKG_USING_JS_PERSIMMON is not set */
-/* PKG_USING_JERRYSCRIPT_WIN32 is not set */
+#define TC_USING_UTEST_FAIL_TC
+#define TC_USING_UTEST_PASS_TC
 
-/* Network Utilities */
+/* utest smp */
 
-/* PKG_USING_WICED is not set */
-/* PKG_USING_CLOUDSDK is not set */
-/* PKG_USING_COREMARK is not set */
-/* PKG_USING_POWER_MANAGER is not set */
-/* PKG_USING_RT_OTA is not set */
-/* PKG_USING_RDBD_SRC is not set */
-/* PKG_USING_RTINSIGHT is not set */
-/* PKG_USING_SMARTCONFIG is not set */
-/* PKG_USING_RTX is not set */
+#define TC_USING_UTEST_S1TO100
+
+/* filesystem test */
+
+/* TC_USING_FS_DFS_TC is not set */
+/* TC_USING_FS_STDLIB_TC is not set */
+/* TC_USING_FS_POSIX_TC is not set */
 #define BOARD_K210_EVB
 #define BSP_USING_UART_HS
 /* BSP_USING_UART1 is not set */

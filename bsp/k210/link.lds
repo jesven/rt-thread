@@ -63,6 +63,10 @@ SECTIONS
         __rt_init_end = .;
         . = ALIGN(4);
 
+		__rt_utest_tc_tab_start = .;
+        KEEP(*(SORT(UtestTcTab)))
+		__rt_utest_tc_tab_end = .;
+
         . = ALIGN(4);
         _etext = .;
     } > SRAM
