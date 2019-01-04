@@ -564,6 +564,17 @@ void rt_scheduler_do_irq_switch(void *context)
                 rt_hw_context_switch_interrupt(context, (rt_ubase_t)&current_thread->sp,
                         (rt_ubase_t)&to_thread->sp, to_thread);
             }
+#ifdef RT_USING_SIGNALS
+            else if ((current_thread->stat & RT_THREAD_STAT_SIGNAL_MASK) & RT_THREAD_STAT_SIGNAL)
+            {
+                extern void rt_hw_handle_sig_interrupt(void *context);
+
+                current_thread->stat &= ~RT_THREAD_STAT_SIGNAL;
+
+                rt_hw_interrupt_enable(level);
+                rt_hw_handle_sig_interrupt(context);
+            }
+#endif
         }
     }
     rt_hw_interrupt_enable(level);

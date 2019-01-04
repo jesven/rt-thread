@@ -593,7 +593,9 @@ struct rt_thread
     rt_sigset_t     sig_pending;                        /**< the pending signals */
     rt_sigset_t     sig_mask;                           /**< the mask bits of signal */
 
+#ifndef RT_USING_SMP
     void            *sig_ret;                           /**< the return stack pointer from signal */
+#endif
     rt_sighandler_t *sig_vectors;                       /**< vectors of signal handler */
     void            *si_list;                           /**< the signal infor list */
 #endif
