@@ -28,3 +28,14 @@ objs = PrepareBuilding(env, RTT_ROOT, has_libcpu=True)
 
 # make a building
 DoBuilding(TARGET, objs)
+
+from utils import *
+project = ProjectInfo(env)
+for item in project['FILES']:
+	print(item)
+
+for item in project['CPPDEFINES']:
+	print(item)
+
+for item in project['CPPPATH']:
+	print(item)

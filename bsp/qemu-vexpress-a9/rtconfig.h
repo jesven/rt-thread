@@ -61,7 +61,7 @@
 /* RT_USING_DEVICE_OPS is not set */
 #define RT_USING_INTERRUPT_INFO
 #define RT_USING_CONSOLE
-#define RT_CONSOLEBUF_SIZE 128
+#define RT_CONSOLEBUF_SIZE 256
 #define RT_CONSOLE_DEVICE_NAME "uart0"
 #define RT_VER_NUM 0x40000
 #define ARCH_ARM
@@ -209,23 +209,21 @@
 /* RT_USING_LWIP141 is not set */
 #define RT_USING_LWIP202
 /* RT_USING_LWIP210 is not set */
-#define RT_USING_LWIP_IPV6
+/* RT_USING_LWIP_IPV6 is not set */
 /* RT_LWIP_IGMP is not set */
 #define RT_LWIP_ICMP
 /* RT_LWIP_SNMP is not set */
 #define RT_LWIP_DNS
-#define RT_LWIP_DHCP
-#define IP_SOF_BROADCAST 1
-#define IP_SOF_BROADCAST_RECV 1
+/* RT_LWIP_DHCP is not set */
 
 /* Static IPv4 Address */
 
-#define RT_LWIP_IPADDR "192.168.1.30"
-#define RT_LWIP_GWADDR "192.168.1.1"
+#define RT_LWIP_IPADDR "10.0.0.2"
+#define RT_LWIP_GWADDR "10.0.0.1"
 #define RT_LWIP_MSKADDR "255.255.255.0"
 #define RT_LWIP_UDP
 #define RT_LWIP_TCP
-/* RT_LWIP_RAW is not set */
+#define RT_LWIP_RAW
 /* RT_LWIP_PPP is not set */
 #define RT_MEMP_NUM_NETCONN 8
 #define RT_LWIP_PBUF_NUM 16
@@ -279,7 +277,32 @@
 /* LOG_TRACE_USING_LEVEL_DEBUG is not set */
 /* LOG_TRACE_USING_MEMLOG is not set */
 /* RT_USING_RYM is not set */
-/* RT_USING_ULOG is not set */
+#define RT_USING_ULOG
+/* ULOG_OUTPUT_LVL_A is not set */
+/* ULOG_OUTPUT_LVL_E is not set */
+/* ULOG_OUTPUT_LVL_W is not set */
+/* ULOG_OUTPUT_LVL_I is not set */
+#define ULOG_OUTPUT_LVL_D
+#define ULOG_OUTPUT_LVL 7
+/* ULOG_USING_ISR_LOG is not set */
+#define ULOG_ASSERT_ENABLE
+#define ULOG_LINE_BUF_SIZE 256
+/* ULOG_USING_ASYNC_OUTPUT is not set */
+
+/* log format */
+
+/* ULOG_OUTPUT_FLOAT is not set */
+#define ULOG_USING_COLOR
+#define ULOG_OUTPUT_TIME
+/* ULOG_TIME_USING_TIMESTAMP is not set */
+#define ULOG_OUTPUT_LEVEL
+#define ULOG_OUTPUT_TAG
+/* ULOG_OUTPUT_THREAD_NAME is not set */
+#define ULOG_BACKEND_USING_CONSOLE
+/* ULOG_USING_FILTER is not set */
+/* ULOG_USING_SYSLOG is not set */
+#define ULOG_SW_VERSION_NUM 0x00101
+#define RT_USING_UTEST
 #define RT_USING_LWP
 
 /* RT-Thread online packages */
@@ -287,7 +310,15 @@
 /* IoT - internet of things */
 
 /* PKG_USING_PAHOMQTT is not set */
-/* PKG_USING_WEBCLIENT is not set */
+#define PKG_USING_WEBCLIENT
+#define WEBCLIENT_USING_SAMPLES
+#define WEBCLIENT_NOT_USE_TLS
+/* WEBCLIENT_USING_SAL_TLS is not set */
+/* WEBCLIENT_USING_MBED_TLS is not set */
+/* PKG_USING_WEBCLIENT_V201 is not set */
+/* PKG_USING_WEBCLIENT_V200 is not set */
+/* PKG_USING_WEBCLIENT_V100 is not set */
+#define PKG_USING_WEBCLIENT_LATEST_VERSION
 /* PKG_USING_WEBNET is not set */
 /* PKG_USING_MONGOOSE is not set */
 /* PKG_USING_WEBTERMINAL is not set */
@@ -308,7 +339,16 @@
 /* PKG_USING_WLAN_WICED is not set */
 /* PKG_USING_COAP is not set */
 /* PKG_USING_NOPOLL is not set */
-/* PKG_USING_NETUTILS is not set */
+#define PKG_USING_NETUTILS
+#define PKG_NETUTILS_PING
+/* PKG_NETUTILS_TFTP is not set */
+/* PKG_NETUTILS_IPERF is not set */
+/* PKG_NETUTILS_NETIO is not set */
+/* PKG_NETUTILS_NTP is not set */
+/* PKG_NETUTILS_TELNET is not set */
+/* PKG_NETUTILS_TCPDUMP is not set */
+#define PKG_USING_NETUTILS_LATEST_VERSION
+/* PKG_USING_NETUTILS_V100 is not set */
 /* PKG_USING_AT_DEVICE is not set */
 /* PKG_USING_WIZNET is not set */
 
@@ -389,8 +429,7 @@
 /* PKG_USING_ZLIB is not set */
 /* PKG_USING_DSTR is not set */
 /* PKG_USING_TINYFRAME is not set */
-
-/* sample package */
+/* PKG_USING_KENDRYTE_DEMO is not set */
 
 /* samples: kernel and components samples */
 
@@ -398,10 +437,8 @@
 /* PKG_USING_FILESYSTEM_SAMPLES is not set */
 /* PKG_USING_NETWORK_SAMPLES is not set */
 /* PKG_USING_PERIPHERAL_SAMPLES is not set */
-
-/* example package: hello */
-
 /* PKG_USING_HELLO is not set */
+/* PKG_USING_VI is not set */
 
 /* Privated Packages of RealThread */
 
@@ -424,6 +461,30 @@
 /* PKG_USING_RTINSIGHT is not set */
 /* PKG_USING_SMARTCONFIG is not set */
 /* PKG_USING_RTX is not set */
+#define RT_USING_TESTCASE
+
+/* utest kernel test */
+
+#define TC_USING_SMP_ADD_TC
+#define TC_USING_SMP_ADD_BIND_TC
+#define TC_USING_SMP_YIELD_TC
+#define TC_USING_SMP_SIGNAL_TC
+
+/* utest selftest */
+
+#define TC_USING_UTEST_FAIL_TC
+#define TC_USING_UTEST_PASS_TC
+
+/* filesystem test */
+
+/* TC_USING_FS_DFS_TC is not set */
+/* TC_USING_FS_STDLIB_TC is not set */
+#define TC_USING_FS_POSIX_TC
+#define TC_FS_POSIX_BLOCK_DEV_NAME "sd0"
+#define TC_FS_POSIX_NAME "elm"
+#define TC_FS_POSIX_MOUNT_PATH_ "/"
+#define PKG_USING_TESTCASES_LATEST_VERSION
+/* PKG_USING_NIMBLE is not set */
 #define SOC_VEXPRESS_A9
 #define RT_USING_UART0
 #define RT_USING_UART1
