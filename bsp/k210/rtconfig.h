@@ -41,7 +41,7 @@
 #define RT_USING_EVENT
 #define RT_USING_MAILBOX
 #define RT_USING_MESSAGEQUEUE
-/* RT_USING_SIGNALS is not set */
+#define RT_USING_SIGNALS
 
 /* Memory Management */
 
@@ -300,12 +300,49 @@
 /* PKG_USING_PERIPHERAL_SAMPLES is not set */
 /* PKG_USING_HELLO is not set */
 /* PKG_USING_VI is not set */
+
+/* Privated Packages of RealThread */
+
+/* PKG_USING_CODEC is not set */
+/* PKG_USING_PLAYER is not set */
+/* PKG_USING_PERSIMMON_SRC is not set */
+/* PKG_USING_JS_PERSIMMON is not set */
+/* PKG_USING_JERRYSCRIPT_WIN32 is not set */
+
+/* Network Utilities */
+
+/* PKG_USING_WICED is not set */
+/* PKG_USING_CLOUDSDK is not set */
+/* PKG_USING_COREMARK is not set */
+/* PKG_USING_POWER_MANAGER is not set */
+/* PKG_USING_RT_OTA is not set */
+/* PKG_USING_RDBD_SRC is not set */
+/* PKG_USING_RTINSIGHT is not set */
+/* PKG_USING_SMARTCONFIG is not set */
+/* PKG_USING_RTX is not set */
 #define RT_USING_TESTCASE
+
+/* utest kernel test */
+
+/* TC_USING_SMP_ADD_TC is not set */
+/* TC_USING_SMP_ADD_BIND_TC is not set */
+/* TC_USING_SMP_YIELD_TC is not set */
+/* TC_USING_SMP_SIGNAL_TC is not set */
 
 /* utest selftest */
 
 #define TC_USING_UTEST_FAIL_TC
 #define TC_USING_UTEST_PASS_TC
+
+/* filesystem test */
+
+/* TC_USING_FS_DFS_TC is not set */
+/* TC_USING_FS_STDLIB_TC is not set */
+/* TC_USING_FS_POSIX_TC is not set */
+#define PKG_USING_TESTCASES_LATEST_VERSION
+/* PKG_USING_NIMBLE is not set */
+
+/* utest selftest */
 
 /* utest smp */
 
@@ -313,9 +350,6 @@
 
 /* filesystem test */
 
-/* TC_USING_FS_DFS_TC is not set */
-/* TC_USING_FS_STDLIB_TC is not set */
-/* TC_USING_FS_POSIX_TC is not set */
 #define BOARD_K210_EVB
 #define BSP_USING_UART_HS
 /* BSP_USING_UART1 is not set */
