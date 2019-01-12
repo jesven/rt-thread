@@ -511,15 +511,17 @@ int rt_thread_kill(rt_thread_t tid, int sig)
             }
         }
     }
-    rt_hw_interrupt_enable(level);
+    else
+    {
+        /* a new signal */
+        tid->sig_pending |= sig_mask(sig);
+    }
 
     si_node = (struct siginfo_node *) rt_mp_alloc(_rt_siginfo_pool, 0);
     if (si_node)
     {
         rt_slist_init(&(si_node->list));
         memcpy(&(si_node->si), &si, sizeof(siginfo_t));
-
-        level = rt_hw_interrupt_disable();
 
         if (tid->si_list)
         {
@@ -532,16 +534,13 @@ int rt_thread_kill(rt_thread_t tid, int sig)
         {
             tid->si_list = si_node;
         }
-
-        /* a new signal */
-        tid->sig_pending |= sig_mask(sig);
-
-        rt_hw_interrupt_enable(level);
     }
     else
     {
         LOG_E("The allocation of signal info node failed.");
     }
+
+    rt_hw_interrupt_enable(level);
 
     /* deliver signal to this thread */
     _signal_deliver(tid);
