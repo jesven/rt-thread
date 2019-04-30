@@ -382,6 +382,7 @@ enum rt_object_class_type
     RT_Object_Class_Device,                             /**< The object is a device */
     RT_Object_Class_Timer,                              /**< The object is a timer. */
     RT_Object_Class_Module,                             /**< The object is a module. */
+    RT_Object_Class_EndPoint,                           /**< The object is a endpoint */
     RT_Object_Class_Unknown,                            /**< The object is unknown. */
     RT_Object_Class_Static = 0x80                       /**< The object is a static object. */
 };
@@ -517,7 +518,7 @@ typedef siginfo_t rt_siginfo_t;
 
 /**
  * CPUs definitions
- * 
+ *
  */
 struct rt_cpu
 {
@@ -599,6 +600,10 @@ struct rt_thread
     void            *sig_ret;                           /**< the return stack pointer from signal */
     rt_sighandler_t *sig_vectors;                       /**< vectors of signal handler */
     void            *si_list;                           /**< the signal infor list */
+#endif
+
+#if defined(RT_USING_ENDPOINT)
+    void            *msg_ret;                           /**< the return msg */
 #endif
 
     rt_ubase_t  init_tick;                              /**< thread's initialized tick */
@@ -740,6 +745,33 @@ struct rt_messagequeue
     void                *msg_queue_free;                /**< pointer indicated the free node of queue */
 };
 typedef struct rt_messagequeue *rt_mq_t;
+#endif
+
+#ifdef RT_USING_ENDPOINT
+enum
+{
+    RT_IPC_STAT_IDLE,
+    RT_IPC_STAT_WAIT,
+    RT_IPC_STAT_ACTIVE,
+};
+
+struct rt_ipc_msg
+{
+    void *data;                                          /**< the payload of msg */
+    rt_list_t mlist;                                     /**< the msg list */
+    rt_uint8_t need_reply;                               /**< whether msg wait reply*/
+};
+typedef struct rt_ipc_msg *rt_ipc_msg_t;
+
+struct rt_endpoint
+{
+    struct rt_ipc_object parent;                            /**< inherit from object */
+    struct rt_thread *reply;                            /**< the thread will be reply */
+    rt_list_t wait_msg;                                 /**< the wait queue of sender msg */
+    rt_list_t wait_thread;                              /**< the wait queue of sender thread */
+    rt_uint8_t stat;                                    /**< the status of this endpoint */
+};
+typedef struct rt_endpoint *rt_endpoint_t;
 #endif
 
 /**@}*/

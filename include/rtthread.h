@@ -387,6 +387,17 @@ rt_err_t rt_mq_recv(rt_mq_t    mq,
 rt_err_t rt_mq_control(rt_mq_t mq, int cmd, void *arg);
 #endif
 
+#ifdef RT_USING_ENDPOINT
+
+void rt_ipc_msg_init(rt_ipc_msg_t msg, void *data, rt_uint8_t need_reply);
+rt_endpoint_t rt_endpoint_create(const char *name);
+rt_err_t rt_endpoint_delete(rt_endpoint_t ep);
+rt_err_t rt_ipc_send(rt_endpoint_t ep, rt_ipc_msg_t msg, rt_ipc_msg_t *msg_ret);
+rt_err_t rt_ipc_reply(rt_endpoint_t ep, rt_ipc_msg_t msg);
+rt_err_t rt_ipc_recv(rt_endpoint_t ep, rt_ipc_msg_t *pmsg);
+
+#endif
+
 /**@}*/
 
 #ifdef RT_USING_DEVICE

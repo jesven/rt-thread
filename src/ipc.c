@@ -1049,7 +1049,7 @@ rt_err_t rt_event_send(rt_event_t event, rt_uint32_t set)
     event->set |= set;
 
     RT_OBJECT_HOOK_CALL(rt_object_put_hook, (&(event->parent.parent)));
-    
+
     if (!rt_list_isempty(&event->parent.suspend_thread))
     {
         /* search thread list to resume thread */
@@ -1252,7 +1252,7 @@ rt_err_t rt_event_control(rt_event_t event, int cmd, void *arg)
     /* parameter check */
     RT_ASSERT(event != RT_NULL);
     RT_ASSERT(rt_object_get_type(&event->parent.parent) == RT_Object_Class_Event);
-    
+
     if (cmd == RT_IPC_CMD_RESET)
     {
         /* disable interrupt */
@@ -2325,5 +2325,213 @@ rt_err_t rt_mq_control(rt_mq_t mq, int cmd, void *arg)
 }
 RTM_EXPORT(rt_mq_control);
 #endif /* end of RT_USING_MESSAGEQUEUE */
+
+
+#ifdef RT_USING_ENDPOINT
+
+void rt_ipc_msg_init(rt_ipc_msg_t msg, void *data, rt_uint8_t need_reply)
+{
+    RT_ASSERT(msg != RT_NULL);
+
+    msg->need_reply = need_reply;
+    msg->data = data;
+    rt_list_init(&msg->mlist);
+}
+
+rt_endpoint_t rt_endpoint_create(const char *name)
+{
+    rt_endpoint_t ep;
+
+    RT_DEBUG_NOT_IN_INTERRUPT;
+
+    ep = (rt_endpoint_t)rt_object_allocate(RT_Object_Class_EndPoint, name);
+
+    if (ep)
+    {
+        rt_ipc_object_init(&ep->parent);
+        rt_list_init(&ep->wait_msg);
+        rt_list_init(&ep->wait_thread);
+        ep->reply = RT_NULL;
+        ep->stat = RT_IPC_STAT_IDLE;
+    }
+
+    return ep;
+}
+
+rt_err_t rt_endpoint_delete(rt_endpoint_t ep)
+{
+    register rt_ubase_t temp;
+
+    RT_DEBUG_NOT_IN_INTERRUPT;
+
+    RT_ASSERT(ep != RT_NULL);
+    RT_ASSERT(rt_object_get_type(&ep->parent.parent) == RT_Object_Class_EndPoint);
+    RT_ASSERT(rt_object_is_systemobject(&ep->parent.parent) == RT_FALSE);
+
+    temp = rt_hw_interrupt_disable();
+
+    rt_ipc_list_resume_all(&ep->parent.suspend_thread);
+    rt_ipc_list_resume_all(&ep->wait_thread);
+#if 0
+    while (ep->wait_msg.next != &ep->wait_msg)
+    {
+        rt_ipc_msg_t msg;
+
+        msg = rt_list_entry(ep->wait_msg.next, struct rt_ipc_msg, mlist);
+    }
+#else
+    /* all ipc msg is lost */
+    rt_list_init(&ep->wait_msg);
+#endif
+    rt_object_delete(&ep->parent.parent);
+
+    rt_hw_interrupt_enable(temp);
+
+    return RT_EOK;
+}
+
+rt_err_t rt_ipc_send(rt_endpoint_t ep, rt_ipc_msg_t msg, rt_ipc_msg_t *msg_ret)
+{
+    struct rt_thread *thread_recv, *thread_send;
+    register rt_base_t temp;
+    register rt_bool_t need_schedule;
+    register rt_int8_t need_reply;
+
+    RT_ASSERT(ep != RT_NULL);
+    RT_ASSERT(msg != RT_NULL);
+    RT_ASSERT(rt_object_get_type(&ep->parent.parent) == RT_Object_Class_EndPoint);
+
+    need_schedule = RT_FALSE;
+
+    temp = rt_hw_interrupt_disable();
+
+    need_reply = msg->need_reply;
+
+    thread_send = rt_thread_self();
+
+    switch (ep->stat)
+    {
+        case RT_IPC_STAT_IDLE:
+        case RT_IPC_STAT_ACTIVE:
+            rt_list_insert_before(&ep->wait_msg, &msg->mlist);
+            thread_send->error = RT_EOK;
+            if (need_reply)
+            {
+                rt_ipc_list_suspend(&ep->wait_thread,
+                        thread_send,
+                        RT_IPC_FLAG_FIFO);
+                need_schedule = RT_TRUE;
+            }
+            break;
+        case RT_IPC_STAT_WAIT:
+            RT_ASSERT(ep->parent.suspend_thread.next != &ep->parent.suspend_thread);
+            thread_recv = rt_list_entry(ep->parent.suspend_thread.next, struct rt_thread, tlist);
+            thread_recv->msg_ret = msg;
+            /* wake up */
+            rt_ipc_list_resume(&ep->parent.suspend_thread);
+            need_schedule = RT_TRUE;
+            if (need_reply)
+            {
+                ep->reply = thread_send;
+                ep->stat = RT_IPC_STAT_ACTIVE;
+                rt_ipc_list_suspend(&ep->wait_thread,
+                        thread_send,
+                        RT_IPC_FLAG_FIFO);
+            }
+            else
+            {
+                ep->stat = RT_IPC_STAT_IDLE;
+            }
+            break;
+        default:
+            break;
+    }
+
+    rt_hw_interrupt_enable(temp);
+
+    if (need_schedule == RT_TRUE)
+        rt_schedule();
+
+    if (need_reply)
+    {
+        RT_ASSERT(msg_ret != RT_NULL);
+        *msg_ret = thread_send->msg_ret;
+        thread_send->msg_ret = RT_NULL;
+    }
+
+    return RT_EOK;
+}
+
+rt_err_t rt_ipc_reply(rt_endpoint_t ep, rt_ipc_msg_t msg)
+{
+    struct rt_thread *thread;
+    register rt_base_t temp;
+
+    RT_ASSERT(ep != RT_NULL);
+    RT_ASSERT(msg != RT_NULL);
+    RT_ASSERT(rt_object_get_type(&ep->parent.parent) == RT_Object_Class_EndPoint);
+    RT_ASSERT(ep->stat == RT_IPC_STAT_ACTIVE);
+    RT_ASSERT(ep->reply != RT_NULL);
+
+    temp = rt_hw_interrupt_disable();
+
+    thread = ep->reply;
+    thread->msg_ret = msg;
+    rt_thread_resume(thread);
+    ep->stat = RT_IPC_STAT_IDLE;
+    ep->reply = RT_NULL;
+
+    rt_hw_interrupt_enable(temp);
+    rt_schedule();
+
+    return RT_EOK;
+}
+
+rt_err_t rt_ipc_recv(rt_endpoint_t ep, rt_ipc_msg_t *pmsg)
+{
+    struct rt_thread *thread;
+    rt_ipc_msg_t msg_ret;
+    register rt_base_t temp;
+
+    RT_ASSERT(ep != RT_NULL);
+    RT_ASSERT(pmsg != RT_NULL);
+    RT_ASSERT(rt_object_get_type(&ep->parent.parent) == RT_Object_Class_EndPoint);
+    RT_ASSERT(ep->stat == RT_IPC_STAT_IDLE);
+
+    temp = rt_hw_interrupt_disable();
+
+    if (ep->wait_msg.next != &ep->wait_msg)
+    {
+        msg_ret = rt_list_entry(ep->wait_msg.next, struct rt_ipc_msg, mlist);
+        rt_list_remove(ep->wait_msg.next);
+        if (msg_ret->need_reply)
+        {
+            RT_ASSERT(ep->wait_thread.next != &ep->wait_thread);
+
+            thread = rt_list_entry(ep->wait_thread.next, struct rt_thread, tlist);
+            rt_list_remove(ep->wait_thread.next);
+            ep->reply = thread;
+            ep->stat = RT_IPC_STAT_ACTIVE;
+        }
+        *pmsg = msg_ret;
+    }
+    else
+    {
+        thread = rt_thread_self();
+
+        rt_ipc_list_suspend(&ep->parent.suspend_thread,
+                thread, RT_IPC_FLAG_FIFO);
+        ep->stat = RT_IPC_STAT_WAIT;
+        rt_schedule();
+        *pmsg = thread->msg_ret;
+        thread->msg_ret = RT_NULL;
+    }
+
+    rt_hw_interrupt_enable(temp);
+
+    return RT_EOK;
+}
+
+#endif /* end of RT_USING_ENDPOINT */
 
 /**@}*/

@@ -264,5 +264,6 @@
 #define RT_USING_UART0
 #define RT_USING_UART1
 #define BSP_DRV_EMAC
+#define RT_USING_ENDPOINT
 
 #endif
