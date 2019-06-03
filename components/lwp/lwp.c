@@ -12,6 +12,7 @@
 #include <rtthread.h>
 #include <rthw.h>
 #include <dfs_posix.h>
+#include <elf.h>
 
 #ifndef RT_USING_DFS
     #error  "lwp need file system(RT_USING_DFS)"
@@ -80,14 +81,141 @@ static int lwp_argscopy(struct rt_lwp *lwp, int argc, char **argv)
     return 0;
 }
 
+#define dprintf(...)
+
+static const char elf_magic[] = {0x7f, 'E', 'L', 'F'};
+
+static int load_elf(char *buff, int len, struct rt_lwp *lwp, uint8_t *load_addr)
+{
+    uint32_t i;
+    uint32_t off = 0;
+    char *p_section_str;
+    Elf32_Ehdr eheader;
+    Elf32_Phdr pheader;
+    Elf32_Shdr sheader;
+    int result = RT_EOK;
+    uint32_t text_vaddr;
+
+    if (len < sizeof eheader)
+    {
+        return -RT_ERROR;
+    }
+
+    if (memcmp(elf_magic, buff, 4) != 0)
+    {
+        return -RT_ERROR;
+    }
+
+    memcpy(&eheader, buff + off, sizeof eheader);
+    if (eheader.e_ident[4] != 1)
+    { /* not 32bit */
+        return -RT_ERROR;
+    }
+    if (eheader.e_ident[6] != 1)
+    { /* ver not 1 */
+        return -RT_ERROR;
+    }
+    if (eheader.e_type != 2)
+    { /* not executeable */
+        return -RT_ERROR;
+    }
+
+    off = eheader.e_phoff;
+    for (i = 0; i < eheader.e_phnum; i++, off += sizeof pheader) {
+        memcpy(&pheader, buff + off, sizeof pheader);
+        if (pheader.p_type == PT_LOAD) {
+            if (pheader.p_filesz > pheader.p_memsz)
+            {
+                return -RT_ERROR;
+            }
+            if (load_addr)
+                lwp->text_entry = load_addr;
+            else
+            {
+#ifdef RT_USING_CACHE
+                lwp->text_entry = (rt_uint8_t *)rt_malloc_align(pheader.p_memsz, RT_CPU_CACHE_LINE_SZ);
+#else
+                lwp->text_entry = (rt_uint8_t *)rt_malloc(pheader.p_memsz);
+#endif
+                if (lwp->text_entry == RT_NULL)
+                {
+                    dbg_log(DBG_ERROR, "alloc text memory faild!\n");
+                    result = -RT_ENOMEM;
+                    goto _exit;
+                }
+                else
+                {
+                    dbg_log(DBG_LOG, "lwp text malloc : %p, size: %d!\n", lwp->text_entry, lwp->text_size);
+                }
+                memcpy(lwp->text_entry, buff + pheader.p_offset, pheader.p_filesz);
+            }
+            if (pheader.p_filesz < pheader.p_memsz)
+            {
+                memset(lwp->text_entry + pheader.p_filesz, 0, pheader.p_memsz - pheader.p_filesz);
+            }
+            break;
+        }
+    }
+
+    /* section info */
+    off = eheader.e_shoff;
+    /* find section string tabel */
+    memcpy(&sheader, buff + off + (sizeof sheader) * eheader.e_shstrndx, sizeof sheader);
+    p_section_str = buff + sheader.sh_offset;
+
+    text_vaddr = 0;
+    for (i = 0; i < eheader.e_shnum; i++, off += sizeof sheader) {
+        memcpy(&sheader, buff + off, sizeof sheader);
+        if (strcmp(p_section_str + sheader.sh_name, "text") == 0)
+        {
+            text_vaddr = sheader.sh_addr;
+            lwp->text_size = sheader.sh_size;
+        }
+        else if (strcmp(p_section_str + sheader.sh_name, "data") == 0)
+        {
+            lwp->data = lwp->text_entry + sheader.sh_addr;
+            lwp->data_size = pheader.p_memsz - sheader.sh_addr;
+        }
+    }
+    lwp->data -= text_vaddr;
+    dprintf("lwp->text_entry = 0x%p\n", lwp->text_entry);
+    dprintf("lwp->text_size = 0x%p\n", lwp->text_size);
+    dprintf("lwp->data = 0x%p\n", lwp->data);
+    dprintf("lwp->data_size = 0x%p\n", lwp->data_size);
+#ifdef RT_USING_CACHE
+    rt_hw_cpu_dcache_ops(RT_HW_CACHE_FLUSH, lwp->text_entry, lwp->text_size);
+    rt_hw_cpu_icache_ops(RT_HW_CACHE_INVALIDATE, lwp->text_entry, lwp->text_size);
+#endif
+
+_exit:
+    if (result != RT_EOK)
+    {
+        if (lwp->lwp_type == LWP_TYPE_DYN_ADDR)
+        {
+            dbg_log(DBG_ERROR, "lwp dynamic load faild, %d\n", result);
+            if (lwp->text_entry)
+            {
+                dbg_log(DBG_LOG, "lwp text free: %p\n", lwp->text_entry);
+#ifdef RT_USING_CACHE
+                rt_free_align(lwp->text_entry);
+#else
+                rt_free(lwp->text_entry);
+#endif
+            }
+        }
+    }
+    return result;
+}
+
+
 static int lwp_load(const char *filename, struct rt_lwp *lwp, uint8_t *load_addr, size_t addr_size)
 {
-    int fd;
     uint8_t *ptr;
-    int result = RT_EOK;
-    int nbytes;
-    struct lwp_header header;
-    struct lwp_chunk  chunk;
+    int ret = -1;
+    int len;
+    char *buf = 0, *p;
+    FILE *fp = 0;
+    int read_size;
 
     /* check file name */
     RT_ASSERT(filename != RT_NULL);
@@ -105,164 +233,52 @@ static int lwp_load(const char *filename, struct rt_lwp *lwp, uint8_t *load_addr
         ptr = RT_NULL;
     }
 
-    /* open lwp */
-    fd = open(filename, 0, O_RDONLY);
-    if (fd < 0)
-    {
-        dbg_log(DBG_ERROR, "open file:%s failed!\n", filename);
-        result = -RT_ENOSYS;
-        goto _exit;
+    fp = fopen(filename, "rb");
+    if (!fp) {
+        rt_kprintf("ERROR: Can't open elf file %s!\n", filename);
+        goto out;
+    }
+    fseek(fp, 0, SEEK_END);
+    len = ftell(fp);
+    if (!len) {
+        rt_kprintf("ERROR: File %s size error!\n", filename);
+        goto out;
     }
 
-    /* read lwp header */
-    nbytes = read(fd, &header, sizeof(struct lwp_header));
-    if (nbytes != sizeof(struct lwp_header))
-    {
-        dbg_log(DBG_ERROR, "read lwp header return error size: %d!\n", nbytes);
-        result = -RT_EIO;
-        goto _exit;
+    fseek(fp, 0, SEEK_SET);
+
+    buf = (char*)rt_malloc(len);
+    if (!buf) {
+        rt_kprintf("ERROR: Malloc error!\n");
+        goto out;
     }
 
-    /* check file header */
-    if (header.magic != LWP_MAGIC)
-    {
-        dbg_log(DBG_ERROR, "erro header magic number: 0x%02X\n", header.magic);
-        result = -RT_EINVAL;
-        goto _exit;
-    }
-
-    /* read text chunk info */
-    nbytes = read(fd, &chunk, sizeof(struct lwp_chunk));
-    if (nbytes != sizeof(struct lwp_chunk))
-    {
-        dbg_log(DBG_ERROR, "read text chunk info failed!\n");
-        result = -RT_EIO;
-        goto _exit;
-    }
-
-    dbg_log(DBG_LOG, "chunk name: %s, total len %d, data %d, need space %d!\n",
-            "text", /*chunk.name*/ chunk.total_len, chunk.data_len, chunk.data_len_space);
-
-    /* load text */
-    {
-        lwp->text_size = RT_ALIGN(chunk.data_len_space, 4);
-        if (load_addr)
-            lwp->text_entry = ptr;
-        else
-        {
-#ifdef RT_USING_CACHE
-            lwp->text_entry = (rt_uint8_t *)rt_malloc_align(lwp->text_size, RT_CPU_CACHE_LINE_SZ);
-#else
-            lwp->text_entry = (rt_uint8_t *)rt_malloc(lwp->text_size);
-#endif
-
-            if (lwp->text_entry == RT_NULL)
-            {
-                dbg_log(DBG_ERROR, "alloc text memory faild!\n");
-                result = -RT_ENOMEM;
-                goto _exit;
-            }
-            else
-            {
-                dbg_log(DBG_LOG, "lwp text malloc : %p, size: %d!\n", lwp->text_entry, lwp->text_size);
-            }
+    read_size = len;
+    p = buf;
+    while (read_size) {
+        int rc;
+        if (feof(fp)) {
+            rt_kprintf("ERROR: file size error\n");
+            goto out;
         }
-        dbg_log(DBG_INFO, "load text %d  => (0x%08x, 0x%08x)\n", lwp->text_size, (uint32_t)lwp->text_entry, (uint32_t)lwp->text_entry + lwp->text_size);
-
-        nbytes = read(fd, lwp->text_entry, chunk.data_len);
-        if (nbytes != chunk.data_len)
-        {
-            dbg_log(DBG_ERROR, "read text region from file failed!\n");
-            result = -RT_EIO;
-            goto _exit;
-        }
-#ifdef RT_USING_CACHE
-        else
-        {
-            rt_hw_cpu_dcache_ops(RT_HW_CACHE_FLUSH, lwp->text_entry, lwp->text_size);
-            rt_hw_cpu_icache_ops(RT_HW_CACHE_INVALIDATE, lwp->text_entry, lwp->text_size);
-        }
-#endif
-
-        if (ptr != RT_NULL) ptr += nbytes;
-
-        /* skip text hole */
-        if ((chunk.total_len - sizeof(struct lwp_chunk) - chunk.data_len))
-        {
-            dbg_log(DBG_LOG, "skip text hole %d!\n", (chunk.total_len - sizeof(struct lwp_chunk) - chunk.data_len));
-            lseek(fd, (chunk.total_len - sizeof(struct lwp_chunk) - chunk.data_len), SEEK_CUR);
-        }
+        rc = fread(p, 1, read_size, fp);
+        p += rc;
+        read_size -= rc;
     }
-
-    /* load data */
-    nbytes = read(fd, &chunk, sizeof(struct lwp_chunk));
-    if (nbytes != sizeof(struct lwp_chunk))
+    ret = load_elf(buf, len, lwp, ptr);
+    if (ret != RT_EOK)
     {
-        dbg_log(DBG_ERROR, "read data chunk info failed!\n");
-        result = -RT_EIO;
-        goto _exit;
+        rt_kprintf("lwp load ret = %d\n", ret);
     }
 
-    dbg_log(DBG_LOG, "chunk name: %s, total len %d, data %d, need space %d!\n",
-            chunk.name, chunk.total_len, chunk.data_len, chunk.data_len_space);
-
-    {
-        lwp->data_size = RT_ALIGN(chunk.data_len_space, 4);
-        if (load_addr)
-            lwp->data = ptr;
-        else
-        {
-            lwp->data = rt_malloc(lwp->data_size);
-            if (lwp->data == RT_NULL)
-            {
-                dbg_log(DBG_ERROR, "alloc data memory faild!\n");
-                result = -RT_ENOMEM;
-                goto _exit;
-            }
-            else
-            {
-                dbg_log(DBG_LOG, "lwp data malloc : %p, size: %d!\n", lwp->data, lwp->data_size);
-                rt_memset(lwp->data, 0, lwp->data_size);
-            }
-        }
-
-        dbg_log(DBG_INFO, "load data %d => (0x%08x, 0x%08x)\n", lwp->data_size, (uint32_t)lwp->data, (uint32_t)lwp->data + lwp->data_size);
-        nbytes = read(fd, lwp->data, chunk.data_len);
-        if (nbytes != chunk.data_len)
-        {
-            dbg_log(DBG_ERROR, "read data region from file failed!\n");
-            result = -RT_ERROR;
-            goto _exit;
-        }
+out:
+    if (fp) {
+        fclose(fp);
     }
-
-_exit:
-    if (fd >= 0)
-        close(fd);
-
-    if (result != RT_EOK)
-    {
-        if (lwp->lwp_type == LWP_TYPE_DYN_ADDR)
-        {
-            dbg_log(DBG_ERROR, "lwp dynamic load faild, %d\n", result);
-            if (lwp->text_entry)
-            {
-                dbg_log(DBG_LOG, "lwp text free: %p\n", lwp->text_entry);
-#ifdef RT_USING_CACHE
-                rt_free_align(lwp->text_entry);
-#else
-                rt_free(lwp->text_entry);
-#endif
-            }
-            if (lwp->data)
-            {
-                dbg_log(DBG_LOG, "lwp data free: %p\n", lwp->data);
-                rt_free(lwp->data);
-            }
-        }
+    if (buf) {
+        rt_free(buf);
     }
-
-    return result;
+    return ret;
 }
 
 static void lwp_cleanup(struct rt_thread *tid)
@@ -285,11 +301,13 @@ static void lwp_cleanup(struct rt_thread *tid)
             rt_free(lwp->text_entry);
 #endif
         }
+        /*
         if (lwp->data)
         {
             dbg_log(DBG_LOG, "lwp data free: %p\n", lwp->data);
             rt_free(lwp->data);
         }
+        */
     }
 
     dbg_log(DBG_LOG, "lwp free memory pages\n");
@@ -367,7 +385,9 @@ int exec(char *filename, int argc, char **argv)
 #else
             rt_free(lwp->text_entry);
 #endif
+            /*
             rt_free(lwp->data);
+            */
         }
     }
 
