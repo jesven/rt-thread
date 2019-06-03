@@ -170,6 +170,7 @@ void rt_lwp_mem_free(void *addr)
 
     if (rt_lwp_memheap_is_empty(lwp_heap))
     {
+        rt_sem_detach(&lwp_heap->lock);
         rt_lwp_free_page(rt_lwp_self(), lwp_heap);
     }
 }
