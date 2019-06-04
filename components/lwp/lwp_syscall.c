@@ -219,6 +219,75 @@ int sys_notimpl(void)
     return -ENOSYS;
 }
 
+#ifdef RT_USING_ENDPOINT
+/* ipc */
+
+void * sys_endpoint_create(const char *name)
+{
+    return (void*)rt_endpoint_create(name);
+}
+
+int sys_endpoint_delete(void *ep)
+{
+    return (int)rt_endpoint_delete((rt_endpoint_t)ep);
+}
+
+void * sys_endpoint_find(const char *name)
+{
+    return (void*)rt_endpoint_find(name);
+}
+
+int sys_ipc_send(void* ep, void *data, uint8_t need_reply, void* *data_ret)
+{
+    rt_ipc_msg_t msg;
+    rt_ipc_msg_t msg_ret = RT_NULL;
+    int ret;
+
+    msg = (rt_ipc_msg_t)rt_malloc(sizeof *msg);
+    if (!msg)
+    {
+        return -ENOMEM;
+    }
+    rt_ipc_msg_init(msg, data, need_reply);
+    ret = (int)rt_ipc_send((rt_endpoint_t)ep, msg, &msg_ret);
+    if (need_reply && msg_ret)
+    {
+        *data_ret = msg_ret->data;
+        rt_free(msg_ret);
+    }
+    return ret;
+}
+
+int sys_ipc_reply(void* ep, void* data)
+{
+    rt_ipc_msg_t msg;
+    int ret;
+
+    msg = (rt_ipc_msg_t)rt_malloc(sizeof *msg);
+    if (!msg)
+    {
+        return -ENOMEM;
+    }
+    rt_ipc_msg_init(msg, data, 0);
+    ret = (int)rt_ipc_reply((rt_endpoint_t)ep, msg);
+    return ret;
+}
+
+int sys_ipc_recv(void* ep, void* *data)
+{
+    rt_ipc_msg_t msg = 0;
+    int ret;
+
+    ret = (int)rt_ipc_recv((rt_endpoint_t)ep, &msg);
+    if (msg)
+    {
+        *data = msg->data;
+        rt_free(msg);
+    }
+    return ret;
+}
+#endif
+
 const static void* func_table[] =
 {
     (void *)sys_exit,           // 0x01
@@ -259,6 +328,16 @@ const static void* func_table[] =
     SYSCALL_NET(socket),     // 0x1f
 
     (void *)select,          // 0x20
+
+#ifdef RT_USING_ENDPOINT
+    /* ipc */
+    (void *)sys_endpoint_create, // 0x21
+    (void *)sys_endpoint_delete, // 0x22
+    (void *)sys_endpoint_find,   // 0x23
+    (void *)sys_ipc_send,        // 0x24
+    (void *)sys_ipc_reply,       // 0x25
+    (void *)sys_ipc_recv,        // 0x26
+#endif
 };
 
 const void *lwp_get_sys_api(rt_uint32_t number)

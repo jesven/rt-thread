@@ -2340,10 +2340,12 @@ void rt_ipc_msg_init(rt_ipc_msg_t msg, void *data, rt_uint8_t need_reply)
 
 rt_endpoint_t rt_endpoint_create(const char *name)
 {
+    register rt_ubase_t temp;
     rt_endpoint_t ep;
 
     RT_DEBUG_NOT_IN_INTERRUPT;
 
+    temp = rt_hw_interrupt_disable();
     ep = (rt_endpoint_t)rt_object_allocate(RT_Object_Class_EndPoint, name);
 
     if (ep)
@@ -2354,6 +2356,7 @@ rt_endpoint_t rt_endpoint_create(const char *name)
         ep->reply = RT_NULL;
         ep->stat = RT_IPC_STAT_IDLE;
     }
+    rt_hw_interrupt_enable(temp);
 
     return ep;
 }
@@ -2372,22 +2375,40 @@ rt_err_t rt_endpoint_delete(rt_endpoint_t ep)
 
     rt_ipc_list_resume_all(&ep->parent.suspend_thread);
     rt_ipc_list_resume_all(&ep->wait_thread);
-#if 0
-    while (ep->wait_msg.next != &ep->wait_msg)
-    {
-        rt_ipc_msg_t msg;
 
-        msg = rt_list_entry(ep->wait_msg.next, struct rt_ipc_msg, mlist);
-    }
-#else
-    /* all ipc msg is lost */
+    /* all ipc msg will lost */
     rt_list_init(&ep->wait_msg);
-#endif
+
     rt_object_delete(&ep->parent.parent);
 
     rt_hw_interrupt_enable(temp);
 
     return RT_EOK;
+}
+
+rt_endpoint_t rt_endpoint_find(const char *name)
+{
+    register rt_ubase_t temp;
+    struct rt_object *object;
+    struct rt_list_node *node;
+    struct rt_object_information *information;
+
+    temp = rt_hw_interrupt_disable();
+    information = rt_object_get_information(RT_Object_Class_EndPoint);
+    RT_ASSERT(information != RT_NULL);
+    for (node  = information->object_list.next;
+         node != &(information->object_list);
+         node  = node->next)
+    {
+        object = rt_list_entry(node, struct rt_object, list);
+        if (rt_strncmp(object->name, name, RT_NAME_MAX) == 0)
+        {
+            rt_hw_interrupt_enable(temp);
+            return (rt_endpoint_t)object;
+        }
+    }
+    rt_hw_interrupt_enable(temp);
+    return RT_NULL;
 }
 
 rt_err_t rt_ipc_send(rt_endpoint_t ep, rt_ipc_msg_t msg, rt_ipc_msg_t *msg_ret)
