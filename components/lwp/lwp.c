@@ -85,28 +85,70 @@ static int lwp_argscopy(struct rt_lwp *lwp, int argc, char **argv)
 
 static const char elf_magic[] = {0x7f, 'E', 'L', 'F'};
 
-static int load_elf(char *buff, int len, struct rt_lwp *lwp, uint8_t *load_addr)
+#define check_off(voff, vlen) do {\
+                                if (voff > vlen) { \
+                                    result = -RT_ERROR; \
+                                    goto _exit;\
+                                }\
+                            } while (0)
+
+#define check_read(vrlen, vrlen_want) do {\
+                                if (vrlen < vrlen_want) { \
+                                    result = -RT_ERROR; \
+                                    goto _exit;\
+                                }\
+                            } while (0)
+
+static size_t load_fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+    size_t read_block = 0;
+
+    while (nmemb) {
+        size_t rc;
+
+        if (feof(stream)) {
+            rt_kprintf("ERROR: file size error\n");
+            break;
+        }
+        rc = fread(ptr, size, nmemb, stream);
+        ptr += rc * size;
+        nmemb -= rc;
+        read_block += rc;
+    }
+    return read_block;
+}
+
+static int load_elf(FILE *fp, int len, struct rt_lwp *lwp, uint8_t *load_addr)
 {
     uint32_t i;
     uint32_t off = 0;
-    char *p_section_str;
+    char *p_section_str = 0;
     Elf32_Ehdr eheader;
     Elf32_Phdr pheader;
     Elf32_Shdr sheader;
     int result = RT_EOK;
     uint32_t text_vaddr;
+    uint32_t magic;
+    size_t read_len;
 
     if (len < sizeof eheader)
     {
         return -RT_ERROR;
     }
 
-    if (memcmp(elf_magic, buff, 4) != 0)
+    fseek(fp, 0, SEEK_SET);
+    read_len = load_fread(&magic, 1, sizeof magic, fp);
+    check_read(read_len, sizeof magic);
+
+    if (memcmp(elf_magic, &magic, 4) != 0)
     {
         return -RT_ERROR;
     }
 
-    memcpy(&eheader, buff + off, sizeof eheader);
+    fseek(fp, off, SEEK_SET);
+    read_len = load_fread(&eheader, 1, sizeof eheader, fp);
+    check_read(read_len, sizeof eheader);
+
     if (eheader.e_ident[4] != 1)
     { /* not 32bit */
         return -RT_ERROR;
@@ -122,7 +164,11 @@ static int load_elf(char *buff, int len, struct rt_lwp *lwp, uint8_t *load_addr)
 
     off = eheader.e_phoff;
     for (i = 0; i < eheader.e_phnum; i++, off += sizeof pheader) {
-        memcpy(&pheader, buff + off, sizeof pheader);
+        check_off(off, len);
+        fseek(fp, off, SEEK_SET);
+        read_len = load_fread(&pheader, 1, sizeof pheader, fp);
+        check_read(read_len, sizeof pheader);
+
         if (pheader.p_type == PT_LOAD) {
             if (pheader.p_filesz > pheader.p_memsz)
             {
@@ -147,7 +193,10 @@ static int load_elf(char *buff, int len, struct rt_lwp *lwp, uint8_t *load_addr)
                 {
                     dbg_log(DBG_LOG, "lwp text malloc : %p, size: %d!\n", lwp->text_entry, lwp->text_size);
                 }
-                memcpy(lwp->text_entry, buff + pheader.p_offset, pheader.p_filesz);
+                check_off(pheader.p_offset, len);
+                fseek(fp, pheader.p_offset, SEEK_SET);
+                read_len = load_fread(lwp->text_entry, 1, pheader.p_filesz, fp);
+                check_read(read_len, pheader.p_filesz);
             }
             if (pheader.p_filesz < pheader.p_memsz)
             {
@@ -160,12 +209,29 @@ static int load_elf(char *buff, int len, struct rt_lwp *lwp, uint8_t *load_addr)
     /* section info */
     off = eheader.e_shoff;
     /* find section string tabel */
-    memcpy(&sheader, buff + off + (sizeof sheader) * eheader.e_shstrndx, sizeof sheader);
-    p_section_str = buff + sheader.sh_offset;
+    check_off(off, len);
+    fseek(fp, off + (sizeof sheader) * eheader.e_shstrndx, SEEK_SET);
+    read_len = load_fread(&sheader, 1, sizeof sheader, fp);
+    check_read(read_len, sizeof sheader);
+
+    p_section_str = (char*)rt_malloc(sheader.sh_size);
+    if (!p_section_str) {
+        rt_kprintf("ERROR: Malloc error!\n");
+        result = -ENOMEM;
+        goto _exit;
+    }
+    check_off(sheader.sh_offset, len);
+    fseek(fp, sheader.sh_offset, SEEK_SET);
+    read_len = load_fread(p_section_str, 1, sheader.sh_size, fp);
+    check_read(read_len, sheader.sh_size);
 
     text_vaddr = 0;
+    check_off(off, len);
+    fseek(fp, off, SEEK_SET);
     for (i = 0; i < eheader.e_shnum; i++, off += sizeof sheader) {
-        memcpy(&sheader, buff + off, sizeof sheader);
+        read_len = load_fread(&sheader, 1, sizeof sheader, fp);
+        check_read(read_len, sizeof sheader);
+
         if (strcmp(p_section_str + sheader.sh_name, "text") == 0)
         {
             text_vaddr = sheader.sh_addr;
@@ -188,6 +254,10 @@ static int load_elf(char *buff, int len, struct rt_lwp *lwp, uint8_t *load_addr)
 #endif
 
 _exit:
+    if (p_section_str)
+    {
+        rt_free(p_section_str);
+    }
     if (result != RT_EOK)
     {
         if (lwp->lwp_type == LWP_TYPE_DYN_ADDR)
@@ -213,9 +283,7 @@ static int lwp_load(const char *filename, struct rt_lwp *lwp, uint8_t *load_addr
     uint8_t *ptr;
     int ret = -1;
     int len;
-    char *buf = 0, *p;
     FILE *fp = 0;
-    int read_size;
 
     /* check file name */
     RT_ASSERT(filename != RT_NULL);
@@ -247,25 +315,7 @@ static int lwp_load(const char *filename, struct rt_lwp *lwp, uint8_t *load_addr
 
     fseek(fp, 0, SEEK_SET);
 
-    buf = (char*)rt_malloc(len);
-    if (!buf) {
-        rt_kprintf("ERROR: Malloc error!\n");
-        goto out;
-    }
-
-    read_size = len;
-    p = buf;
-    while (read_size) {
-        int rc;
-        if (feof(fp)) {
-            rt_kprintf("ERROR: file size error\n");
-            goto out;
-        }
-        rc = fread(p, 1, read_size, fp);
-        p += rc;
-        read_size -= rc;
-    }
-    ret = load_elf(buf, len, lwp, ptr);
+    ret = load_elf(fp, len, lwp, ptr);
     if (ret != RT_EOK)
     {
         rt_kprintf("lwp load ret = %d\n", ret);
@@ -274,9 +324,6 @@ static int lwp_load(const char *filename, struct rt_lwp *lwp, uint8_t *load_addr
 out:
     if (fp) {
         fclose(fp);
-    }
-    if (buf) {
-        rt_free(buf);
     }
     return ret;
 }
